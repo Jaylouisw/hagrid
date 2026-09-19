@@ -3,6 +3,8 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Home%20Assistant-2024.1+-blue?style=for-the-badge&logo=home-assistant" alt="Home Assistant">
   <img src="https://img.shields.io/badge/HACS-Custom-orange?style=for-the-badge" alt="HACS">
+  <img src="https://img.shields.io/github/actions/workflow/status/Jaylouisw/hagrid/tests.yml?style=for-the-badge&label=CI" alt="CI">
+  <img src="https://img.shields.io/github/v/release/Jaylouisw/hagrid?style=for-the-badge&label=Release" alt="Release">
   <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License">
 </p>
 

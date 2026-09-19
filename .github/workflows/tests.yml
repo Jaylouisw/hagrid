@@ -1,38 +1,62 @@
-name: Tests
-
-# The bugs this integration has shipped were all import-time or registration-time failures:
-# 1.0.0 could not be imported at all (a dataclass field-order error), which Home Assistant reported
-# to users as "Config flow could not be loaded: Invalid handler specified". These tests run the
-# integration against a real, current Home Assistant so that class of failure cannot ship silently.
+name: CI
 
 on:
   push:
     branches: [main]
   pull_request:
   schedule:
-    # Weekly, so a Home Assistant release that breaks the integration's imports shows up here even
-    # when nothing is pushed.
     - cron: "23 6 * * 1"
   workflow_dispatch:
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
 jobs:
-  shape:
-    name: Import and registration shape
+  hacs:
+    name: HACS validation
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Run HACS validation
+        uses: hacs/action@main
         with:
-          python-version: "3.13"
+          category: integration
 
-      - name: Install test dependencies (Home Assistant + pytest)
+  hassfest:
+    name: Home Assistant metadata validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Run hassfest
+        uses: home-assistant/actions/hassfest@master
+
+  tests:
+    name: Import and registration tests
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: requirements_test.txt
+      - name: Install test dependencies
         run: |
           python -m pip install --upgrade pip
           python -m pip install -r requirements_test.txt
-
-      - name: Show the Home Assistant version under test
+      - name: Show Home Assistant version under test
         run: python -c "from homeassistant.const import __version__; print('homeassistant', __version__)"
-
-      - name: Run the shape tests
+      - name: Run tests
         run: python -m pytest -q tests/

@@ -1,0 +1,31 @@
+name: CD
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    name: Build release package
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Build HACS package
+        run: |
+          set -euo pipefail
+          zip -r hagrid.zip custom_components/hagrid www/hagrid-map
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: hagrid-release-package
+          path: hagrid.zip
+      - name: Attach package to GitHub release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: hagrid.zip
