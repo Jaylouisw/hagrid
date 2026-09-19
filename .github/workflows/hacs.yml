@@ -31,3 +31,8 @@ jobs:
       - uses: hacs/action@main
         with:
           category: integration
+          # HACS looks for brand assets at custom_components/hagrid/brand/icon.png. They are not
+          # in the repository. That check only gates inclusion in the default HACS store, and this
+          # integration is installed as a custom repository, so it is ignored and tracked as an
+          # issue rather than left failing every run.
+          ignore: brands
