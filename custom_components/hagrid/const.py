@@ -303,7 +303,7 @@ ENERGINET_DATASETS = {
     "declaration": "DeclarationProduction",
 }
 
-# Elia (Belgium) dataset names  
+# Elia (Belgium) dataset names
 ELIA_DATASETS = {
     "imbalance_prices_1min": "ods001",
     "imbalance_prices_15min": "ods002",
@@ -358,7 +358,7 @@ UK_DNOS = {
     },
     "ukpn_lpn": {
         "name": "UK Power Networks - London",
-        "short": "UKPN LPN", 
+        "short": "UKPN LPN",
         "regions": ["London"],
         "api_base": UKPN_API_BASE,
     },
@@ -529,26 +529,26 @@ ELEXON_DATASETS = {
     "generation_per_unit": "/datasets/B1610",  # Actual Generation Output Per Generation Unit
     "generation_by_fuel": "/datasets/FUELINST",  # Instantaneous generation by fuel type
     "generation_half_hourly": "/datasets/FUELHH",  # Half-hourly generation outturn
-    
+
     # Physical notifications (planned output)
     "physical_notifications": "/datasets/PN",  # Physical Notifications per BMU
-    
+
     # Interconnector flows
     "interconnector_flows": "/generation/outturn/interconnectors",  # All interconnector flows
-    
+
     # Demand data
     "demand_outturn": "/datasets/INDO",  # Initial National Demand Outturn
     "transmission_demand": "/datasets/ITSDO",  # Transmission System Demand Outturn
     "demand_total": "/demand/actual/total",  # Total load (ATL/B0610)
-    
+
     # System data
     "system_frequency": "/datasets/FREQ",  # Real-time system frequency
     "system_warnings": "/datasets/SYSWARN",  # System warnings
-    
+
     # Balancing data
     "bid_offer_acceptances": "/datasets/BOALF",  # Bid-Offer Acceptance Levels
     "balancing_volumes": "/datasets/QAS",  # Balancing Services Volume
-    
+
     # Reference data
     "bm_units": "/reference/bmunits/all",  # All Balancing Mechanism Units
     "interconnectors": "/reference/interconnectors/all",  # All interconnectors
@@ -578,7 +578,7 @@ ELECTRICITY_MAPS_ZONES = {
     "GB": {"name": "Great Britain", "country": "UK"},
     "GB-NIR": {"name": "Northern Ireland", "country": "UK"},
     "IE": {"name": "Ireland", "country": "IE"},
-    
+
     # Europe
     "DE": {"name": "Germany", "country": "DE"},
     "FR": {"name": "France", "country": "FR"},
@@ -620,7 +620,7 @@ ELECTRICITY_MAPS_ZONES = {
     "EE": {"name": "Estonia", "country": "EE"},
     "LV": {"name": "Latvia", "country": "LV"},
     "LT": {"name": "Lithuania", "country": "LT"},
-    
+
     # North America
     "US-CAL-CISO": {"name": "California ISO", "country": "US"},
     "US-TEX-ERCO": {"name": "Texas ERCOT", "country": "US"},
@@ -635,7 +635,7 @@ ELECTRICITY_MAPS_ZONES = {
     "CA-QC": {"name": "Quebec", "country": "CA"},
     "CA-AB": {"name": "Alberta", "country": "CA"},
     "CA-BC": {"name": "British Columbia", "country": "CA"},
-    
+
     # Australia & NZ
     "AU-NSW": {"name": "New South Wales", "country": "AU"},
     "AU-VIC": {"name": "Victoria", "country": "AU"},
@@ -644,7 +644,7 @@ ELECTRICITY_MAPS_ZONES = {
     "AU-TAS": {"name": "Tasmania", "country": "AU"},
     "AU-WA": {"name": "Western Australia", "country": "AU"},
     "NZ": {"name": "New Zealand", "country": "NZ"},
-    
+
     # Asia
     "JP-TK": {"name": "Japan - Tokyo", "country": "JP"},
     "JP-CB": {"name": "Japan - Chubu", "country": "JP"},
@@ -657,7 +657,7 @@ ELECTRICITY_MAPS_ZONES = {
     "IN-KA": {"name": "India - Karnataka", "country": "IN"},
     "IN-TN": {"name": "India - Tamil Nadu", "country": "IN"},
     "SG": {"name": "Singapore", "country": "SG"},
-    
+
     # South America
     "BR-CS": {"name": "Brazil - Central-South", "country": "BR"},
     "BR-N": {"name": "Brazil - North", "country": "BR"},
@@ -666,7 +666,7 @@ ELECTRICITY_MAPS_ZONES = {
     "CL-SEN": {"name": "Chile - Central", "country": "CL"},
     "AR": {"name": "Argentina", "country": "AR"},
     "UY": {"name": "Uruguay", "country": "UY"},
-    
+
     # Africa & Middle East
     "ZA": {"name": "South Africa", "country": "ZA"},
     "IL": {"name": "Israel", "country": "IL"},
@@ -684,7 +684,7 @@ EIA_REGIONS = {
     "NYIS": {"name": "New York ISO", "type": "iso"},
     "PJM": {"name": "PJM Interconnection", "type": "iso"},
     "SWPP": {"name": "Southwest Power Pool", "type": "iso"},
-    
+
     # Major interconnections
     "US48": {"name": "Lower 48 States", "type": "region"},
     "TEN": {"name": "Eastern Interconnection", "type": "region"},
@@ -733,7 +733,7 @@ AUSTRALIA_REGIONS = {
     "QLD1": {"name": "Queensland", "network": "NEM"},
     "SA1": {"name": "South Australia", "network": "NEM"},
     "TAS1": {"name": "Tasmania", "network": "NEM"},
-    
+
     # Wholesale Electricity Market (WEM)
     "WEM": {"name": "Western Australia", "network": "WEM"},
 }

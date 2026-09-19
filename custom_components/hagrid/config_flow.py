@@ -13,47 +13,47 @@ from homeassistant.helpers import selector
 
 from .api import CarbonIntensityClient
 from .const import (
-    DOMAIN,
-    CONF_POSTCODE,
-    CONF_REGION_ID,
-    CONF_UPDATE_INTERVAL,
-    CONF_SHOW_INFRASTRUCTURE,
-    CONF_SHOW_LIVE_FAULTS,
-    CONF_INCLUDE_OSM_DATA,
-    CONF_OSM_RADIUS_KM,
-    CONF_NATIONAL_GRID_API_KEY,
-    CONF_SSEN_NERDA_API_KEY,
-    CONF_ENERGY_DASHBOARD_API_KEY,
+    CARBON_REGIONS,
+    CONF_AESO_API_KEY,
+    CONF_ALBERTA_ENABLED,
+    CONF_BELGIUM_ENABLED,
+    CONF_DENMARK_ENABLED,
+    CONF_EIA_API_KEY,
     # Global API keys
     CONF_ELECTRICITY_MAPS_API_KEY,
-    CONF_EIA_API_KEY,
+    CONF_ENABLED_REGIONS,
+    CONF_ENERGY_DASHBOARD_API_KEY,
     CONF_ENTSOE_API_KEY,
-    CONF_RTE_CLIENT_ID,
-    CONF_RTE_CLIENT_SECRET,
     # New additional API keys
     CONF_FINGRID_API_KEY,
-    CONF_AESO_API_KEY,
-    CONF_WATTTIME_USERNAME,
-    CONF_WATTTIME_PASSWORD,
     # Regional toggles
     CONF_FINLAND_ENABLED,
-    CONF_DENMARK_ENABLED,
-    CONF_BELGIUM_ENABLED,
     CONF_GERMANY_ENABLED,
-    CONF_POLAND_ENABLED,
+    CONF_INCLUDE_OSM_DATA,
     CONF_ITALY_ENABLED,
-    CONF_ONTARIO_ENABLED,
-    CONF_ALBERTA_ENABLED,
+    CONF_NATIONAL_GRID_API_KEY,
     CONF_NEW_ZEALAND_ENABLED,
+    CONF_ONTARIO_ENABLED,
+    CONF_OSM_RADIUS_KM,
+    CONF_POLAND_ENABLED,
+    CONF_POSTCODE,
+    CONF_REGION_ID,
+    CONF_RTE_CLIENT_ID,
+    CONF_RTE_CLIENT_SECRET,
+    CONF_SHOW_INFRASTRUCTURE,
+    CONF_SHOW_LIVE_FAULTS,
+    CONF_SSEN_NERDA_API_KEY,
+    CONF_UPDATE_INTERVAL,
     CONF_WATTTIME_ENABLED,
+    CONF_WATTTIME_PASSWORD,
+    CONF_WATTTIME_USERNAME,
     CONF_ZONE,
-    CONF_ENABLED_REGIONS,
-    DEFAULT_UPDATE_INTERVAL,
-    DEFAULT_SHOW_INFRASTRUCTURE,
-    DEFAULT_SHOW_LIVE_FAULTS,
     DEFAULT_INCLUDE_OSM_DATA,
     DEFAULT_OSM_RADIUS_KM,
-    CARBON_REGIONS,
+    DEFAULT_SHOW_INFRASTRUCTURE,
+    DEFAULT_SHOW_LIVE_FAULTS,
+    DEFAULT_UPDATE_INTERVAL,
+    DOMAIN,
     ELECTRICITY_MAPS_ZONES,
 )
 
@@ -65,7 +65,7 @@ async def validate_postcode(hass: HomeAssistant, postcode: str) -> dict[str, Any
     async with aiohttp.ClientSession() as session:
         client = CarbonIntensityClient(session)
         data = await client.get_regional_data(postcode=postcode)
-        
+
         if data:
             return {
                 "region_id": data.region_id,
@@ -77,39 +77,39 @@ async def validate_postcode(hass: HomeAssistant, postcode: str) -> dict[str, Any
 
 class HAGridConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for HAGrid."""
-    
+
     VERSION = 1
-    
+
     def __init__(self) -> None:
         """Initialize the config flow."""
         self._postcode: str | None = None
         self._region_id: int | None = None
         self._region_info: dict[str, Any] = {}
-    
+
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Handle the initial step."""
         errors: dict[str, str] = {}
-        
+
         if user_input is not None:
             postcode = user_input.get(CONF_POSTCODE, "").strip().upper()
-            
+
             if postcode:
                 # Extract outward code (first part of postcode)
                 outward = postcode.split()[0] if " " in postcode else postcode[:4].rstrip()
-                
+
                 try:
                     self._region_info = await validate_postcode(self.hass, outward)
                     self._postcode = outward
                     self._region_id = self._region_info.get("region_id")
-                    
+
                     # Check for existing entry with same postcode
                     await self.async_set_unique_id(f"hagrid_{outward}")
                     self._abort_if_unique_id_configured()
-                    
+
                     return await self.async_step_confirm()
-                    
+
                 except ValueError:
                     errors["base"] = "invalid_postcode"
                 except Exception as e:
@@ -118,7 +118,7 @@ class HAGridConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             else:
                 # No postcode - use region selector
                 return await self.async_step_region()
-        
+
         return self.async_show_form(
             step_id="user",
             data_schema=vol.Schema({
@@ -129,38 +129,38 @@ class HAGridConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 "example": "SW1A or RG10",
             },
         )
-    
+
     async def async_step_region(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Handle region selection step."""
         errors: dict[str, str] = {}
-        
+
         if user_input is not None:
             self._region_id = user_input.get(CONF_REGION_ID)
-            
+
             if self._region_id:
                 region_name = CARBON_REGIONS.get(self._region_id, "Unknown")
-                
+
                 await self.async_set_unique_id(f"hagrid_region_{self._region_id}")
                 self._abort_if_unique_id_configured()
-                
+
                 self._region_info = {
                     "region_id": self._region_id,
                     "region_name": region_name,
                 }
-                
+
                 return await self.async_step_confirm()
             else:
                 errors["base"] = "no_region_selected"
-        
+
         # Build region options
         region_options = [
             selector.SelectOptionDict(value=str(k), label=v)
             for k, v in CARBON_REGIONS.items()
             if k <= 14  # Exclude aggregate regions (England, Scotland, Wales)
         ]
-        
+
         return self.async_show_form(
             step_id="region",
             data_schema=vol.Schema({
@@ -173,7 +173,7 @@ class HAGridConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             }),
             errors=errors,
         )
-    
+
     async def async_step_confirm(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
@@ -183,7 +183,7 @@ class HAGridConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             title = self._region_info.get("region_name", "HAGrid")
             if self._postcode:
                 title = f"HAGrid - {self._postcode}"
-            
+
             return self.async_create_entry(
                 title=title,
                 data={
@@ -227,13 +227,13 @@ class HAGridConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     CONF_OSM_RADIUS_KM: DEFAULT_OSM_RADIUS_KM,
                 },
             )
-        
+
         # Build zone options from Electricity Maps zones
         zone_options = [
             selector.SelectOptionDict(value=k, label=f"{v['name']} ({k})")
             for k, v in ELECTRICITY_MAPS_ZONES.items()
         ]
-        
+
         # Show form for API keys (all optional except Electricity Maps if using global data)
         return self.async_show_form(
             step_id="confirm",
@@ -290,7 +290,7 @@ class HAGridConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 "dno": self._region_info.get("dno", "Unknown"),
             },
         )
-    
+
     @staticmethod
     @callback
     def async_get_options_flow(
@@ -302,18 +302,18 @@ class HAGridConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
 class HAGridOptionsFlow(config_entries.OptionsFlow):
     """Handle HAGrid options."""
-    
+
     def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
         """Initialize options flow."""
         self.config_entry = config_entry
-    
+
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Manage the options."""
         if user_input is not None:
             return self.async_create_entry(title="", data=user_input)
-        
+
         return self.async_show_form(
             step_id="init",
             data_schema=vol.Schema({
@@ -365,7 +365,7 @@ class HAGridOptionsFlow(config_entries.OptionsFlow):
                 ),
             }),
         )
-    
+
     async def async_step_api_keys(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
@@ -377,7 +377,7 @@ class HAGridOptionsFlow(config_entries.OptionsFlow):
                 self.config_entry, data=new_data
             )
             return self.async_create_entry(title="", data=self.config_entry.options)
-        
+
         return self.async_show_form(
             step_id="api_keys",
             data_schema=vol.Schema({

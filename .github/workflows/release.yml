@@ -1,0 +1,51 @@
+name: Release
+
+# The CD half. HACS installs from releases, so publishing one is the actual delivery step, and a
+# release is the point where a mistake becomes something users install. This job refuses to publish
+# unless the tag agrees with the manifest version and the tagged tree passes its own tests.
+#
+# To release: bump "version" in custom_components/hagrid/manifest.json, commit, then
+#   git tag vX.Y.Z && git push origin vX.Y.Z
+# The tag is the last thing you do, and this workflow does the rest.
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Full history so GitHub can generate release notes from commits and merged PRs.
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Tag must match the version in manifest.json
+        run: python scripts/check_release_version.py "$GITHUB_REF_NAME"
+
+      - name: Install test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements_test.txt
+
+      - name: Run the shape tests against the tagged tree
+        run: python -m pytest -q tests/
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --title "$GITHUB_REF_NAME" \
+            --generate-notes \
+            --verify-tag

@@ -1,0 +1,45 @@
+name: Copilot setup steps
+
+# Environment preparation for the Copilot cloud agent (the one you assign an issue to).
+#
+# Copilot runs each task in its own ephemeral GitHub Actions environment. This workflow is the thing
+# that gives it a working Home Assistant to test against, so an agent-written change can be checked
+# against the same environment CI uses instead of being written blind.
+#
+# The job MUST be named "copilot-setup-steps" for Copilot to pick it up. It is inert until Copilot is
+# enabled on the repository: nothing here runs on a push or a pull request, so it costs nothing while
+# it waits. See AGENTS.md for the rules an agent working in this repository has to follow.
+
+on:
+  workflow_dispatch:
+  # Copilot also reads this file from the default branch; these triggers exist only so the file can
+  # be exercised by hand and checked while it waits.
+  push:
+    paths:
+      - ".github/workflows/copilot-setup-steps.yml"
+
+jobs:
+  copilot-setup-steps:
+    name: copilot-setup-steps
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install the test dependencies (Home Assistant and pytest)
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements_test.txt
+
+      - name: Install the pinned linter
+        run: python -m pip install "ruff==0.16.8"
+
+      - name: Prove the environment works before handing it over
+        run: |
+          python -c "from homeassistant.const import __version__; print('homeassistant', __version__)"
+          ruff check .
+          python -m pytest -q tests/

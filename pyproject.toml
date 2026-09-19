@@ -1,0 +1,39 @@
+# Lint and test configuration for HAGrid.
+#
+# The rule set is pinned here rather than left to ruff's defaults. A bare `ruff check` in CI means
+# whatever that day's ruff decides to enable, and the answer then differs between the runner and a
+# developer's machine on the same commit. Pinned here, `ruff check .` gives the same answer in both
+# places, and raising the rule set is a deliberate commit rather than a side effect of upgrading a
+# tool. Bump the pinned ruff version in .github/workflows/lint.yml at the same time as this file.
+
+[tool.ruff]
+# Home Assistant 2026.x requires Python 3.13.
+target-version = "py313"
+
+[tool.ruff.lint]
+select = [
+    "E4",  # pycodestyle: imports
+    "E7",  # pycodestyle: statements
+    "E9",  # pycodestyle: runtime errors
+    "F",   # pyflakes: undefined names, unused imports and variables
+    "I",   # isort: import order
+    "UP",  # pyupgrade: deprecated syntax
+    "B",   # flake8-bugbear: likely mistakes
+    "C4",  # flake8-comprehensions
+    "PIE", # flake8-pie
+    "RUF", # ruff's own rules
+]
+
+# Deliberately NOT selected, with the finding count at the time this was written. Each one is a real
+# signal that the code does not yet satisfy; none of them is a green gate today, and a red gate is
+# one people learn to ignore.
+#
+#   W291, W293  79 whitespace findings sitting inside string literals, where "fixing" them changes
+#               what the integration emits. The 798 harmless ones outside strings were cleaned up.
+#   DTZ         24 datetime.now()/utcnow() calls with no timezone, in code paths with no test
+#               coverage. Real, and worth doing with tests in place rather than blind.
+#   BLE001      79 bare `except Exception:` handlers, most of them reporting and returning None.
+#   S, SIM, RET, TRY, PERF, PLR, TRY003  not triaged yet.
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

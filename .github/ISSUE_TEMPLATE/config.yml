@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: How to install HAGrid
+    url: https://github.com/Jaylouisw/hagrid#-installation
+    about: HACS setup, the manual install, and the map card resource step
+  - name: Older reports against the previous repository
+    url: https://github.com/Jaylouisw/HA/issues
+    about: HAGrid used to live inside another repository; its original bug reports are still there
