@@ -692,5 +692,5 @@ class HAGridInterconnectorsSensor(HAGridBaseSensor):
             "total_import_mw": total_import,
             "total_export_mw": total_export,
             "net_flow_mw": total_import - total_export,
-            "countries": list(set(ic.country for ic in flows)),
+            "countries": list({ic.country for ic in flows}),
         }

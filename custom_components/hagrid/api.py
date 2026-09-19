@@ -8,37 +8,36 @@ import math
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
-from typing import Any
+from typing import Any, ClassVar
 from xml.etree import ElementTree as ET
 
 import aiohttp
 
 from .const import (
+    AUSTRALIA_REGIONS,
     CARBON_INTENSITY_API,
-    UKPN_API_BASE,
-    UKPN_DATASETS,
-    NESO_API_BASE,
-    NATIONAL_GRID_API_BASE,
-    SSEN_NERDA_API_BASE,
-    ENERGY_DASHBOARD_API_BASE,
-    OVERPASS_API,
-    NESO_DATASETS,
-    NATIONAL_GRID_DATASETS,
-    ELEXON_API_BASE,
-    ELEXON_DATASETS,
-    UK_INTERCONNECTORS,
+    EIA_API_BASE,
+    EIA_REGIONS,
     # Global API endpoints
     ELECTRICITY_MAPS_API_BASE,
-    EIA_API_BASE,
-    ENTSOE_API_BASE,
-    OPENELECTRICITY_API_BASE,
-    REE_ESIOS_API_BASE,
-    RTE_API_BASE,
     # Zone/region mappings
     ELECTRICITY_MAPS_ZONES,
-    EIA_REGIONS,
+    ELEXON_API_BASE,
+    ENERGY_DASHBOARD_API_BASE,
+    ENTSOE_API_BASE,
     ENTSOE_AREAS,
-    AUSTRALIA_REGIONS,
+    NATIONAL_GRID_API_BASE,
+    NATIONAL_GRID_DATASETS,
+    NESO_API_BASE,
+    NESO_DATASETS,
+    OPENELECTRICITY_API_BASE,
+    OVERPASS_API,
+    REE_ESIOS_API_BASE,
+    RTE_API_BASE,
+    SSEN_NERDA_API_BASE,
+    UK_INTERCONNECTORS,
+    UKPN_API_BASE,
+    UKPN_DATASETS,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -310,7 +309,6 @@ class GridAPIClient(ABC):
         region_id: int | None = None,
     ) -> CarbonIntensityData | None:
         """Get current carbon intensity."""
-        pass
 
     @abstractmethod
     async def get_generation_mix(
@@ -319,7 +317,6 @@ class GridAPIClient(ABC):
         region_id: int | None = None,
     ) -> list[GenerationMix]:
         """Get current generation mix."""
-        pass
 
 
 class CarbonIntensityClient(GridAPIClient):
@@ -448,18 +445,13 @@ class CarbonIntensityClient(GridAPIClient):
                 region = data["data"][0]
                 from_time = region.get("data", [{}])[0].get("from", "")
                 to_time = region.get("data", [{}])[0].get("to", "")
-                if "data" in region:
-                    intensity_source = region["data"][0]
-                else:
-                    intensity_source = region
-
             intensity_data = region.get("intensity", {})
-            if "data" in region and region["data"]:
+            if region.get("data"):
                 intensity_data = region["data"][0].get("intensity", intensity_data)
 
             generation_mix = []
             mix_data = region.get("generationmix", [])
-            if "data" in region and region["data"]:
+            if region.get("data"):
                 mix_data = region["data"][0].get("generationmix", mix_data)
 
             for item in mix_data:
@@ -2016,7 +2008,7 @@ class ENTSOEClient:
         results = []
         try:
             ns = {"ns": "urn:iec62325.351:tc57wg16:451-6:generationloaddocument:3:0"}
-            root = ElementTree.fromstring(xml_text)
+            root = ET.fromstring(xml_text)
 
             for ts in root.findall(".//ns:TimeSeries", ns):
                 mrid = ts.find("ns:mRID", ns)
@@ -3038,7 +3030,7 @@ class SMARDClient:
         self._base_url = "https://www.smard.de/app/chart_data"
 
     # SMARD filter IDs for different data types
-    FILTERS = {
+    FILTERS: ClassVar[dict[str, Any]] = {
         "generation_total": 1223,
         "generation_biomass": 4066,
         "generation_hydro": 1226,
@@ -3109,7 +3101,7 @@ class SMARDClient:
         total_production = 0
         renewable_mw = 0
 
-        for fuel, result in zip(tasks.keys(), results):
+        for fuel, result in zip(tasks.keys(), results, strict=True):
             if isinstance(result, Exception) or not result:
                 continue
 
@@ -3648,13 +3640,10 @@ class TranspowerClient:
 
                 # Try to find fuel type and generation columns
                 fuel_idx = None
-                gen_idx = None
                 for i, h in enumerate(headers):
                     h_lower = h.lower().strip('"')
                     if "fuel" in h_lower or "type" in h_lower:
                         fuel_idx = i
-                    if "generation" in h_lower or "mwh" in h_lower or "quantity" in h_lower:
-                        gen_idx = i
 
                 # If we can't find the structure, aggregate by fuel type
                 if fuel_idx is None:
