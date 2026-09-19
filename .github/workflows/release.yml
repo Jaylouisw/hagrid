@@ -18,7 +18,11 @@ jobs:
       - name: Build HACS package
         run: |
           set -euo pipefail
-          zip -r hagrid.zip custom_components/hagrid www/hagrid-map
+          package_paths=("custom_components/hagrid")
+          if [ -d "www/hagrid-map" ]; then
+            package_paths+=("www/hagrid-map")
+          fi
+          zip -r hagrid.zip "${package_paths[@]}"
       - name: Upload workflow artifact
         uses: actions/upload-artifact@v4
         with:
