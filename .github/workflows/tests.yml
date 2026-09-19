@@ -4,6 +4,9 @@ name: Tests
 # 1.0.0 could not be imported at all (a dataclass field-order error), which Home Assistant reported
 # to users as "Config flow could not be loaded: Invalid handler specified". These tests run the
 # integration against a real, current Home Assistant so that class of failure cannot ship silently.
+#
+# Two jobs, because "it works on the newest Home Assistant" and "it still works on the version
+# hacs.json claims to support" are different claims, and only the first one has ever been checked.
 
 on:
   push:
@@ -11,25 +14,42 @@ on:
   pull_request:
   schedule:
     # Weekly, so a Home Assistant release that breaks the integration's imports shows up here even
-    # when nothing is pushed.
+    # when nothing is pushed. Monday 06:23 UTC, matching the local compatibility check.
     - cron: "23 6 * * 1"
   workflow_dispatch:
 
 jobs:
   shape:
-    name: Import and registration shape
+    name: Tests (${{ matrix.label }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # The gate that matters day to day: newest Home Assistant on PyPI.
+          - label: newest Home Assistant
+            python: "3.13"
+            homeassistant: ""
+          # The claim hacs.json makes, which nothing had ever checked. Home Assistant 2024.1 predates
+          # the Python 3.13 requirement, so this job pins 3.12.
+          - label: declared floor, Home Assistant 2024.1
+            python: "3.12"
+            homeassistant: "homeassistant==2024.1.0"
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.13"
+          python-version: ${{ matrix.python }}
 
-      - name: Install test dependencies (Home Assistant + pytest)
+      - name: Install test dependencies
         run: |
           python -m pip install --upgrade pip
           python -m pip install -r requirements_test.txt
+          # Empty for the newest-Home-Assistant job, which resolves from requirements_test.txt.
+          if [ -n "${{ matrix.homeassistant }}" ]; then
+            python -m pip install "${{ matrix.homeassistant }}"
+          fi
 
       - name: Show the Home Assistant version under test
         run: python -c "from homeassistant.const import __version__; print('homeassistant', __version__)"

@@ -1,0 +1,77 @@
+name: Bug report
+description: Something is wrong with HAGrid
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before you file: two things are known and don't need reporting.
+
+        - **The map card is a manual step.** HACS installs the integration only. Copy `www/hagrid-map/`
+          into `config/www/` and register `/local/hagrid-map/hagrid-map.js` as a JavaScript module
+          under **Settings → Dashboards → Resources**. If you skipped that, the card won't exist.
+        - **Only UK Power Networks areas have fault and substation data** (London, Eastern, South
+          Eastern). If you're on another DNO, that's a missing feature, not a bug — say so in the
+          feature request form instead.
+
+  - type: input
+    id: ha-version
+    attributes:
+      label: Home Assistant version
+      description: Settings → About, or the header of your log.
+      placeholder: "2026.2.3"
+    validations:
+      required: true
+
+  - type: input
+    id: integration-version
+    attributes:
+      label: HAGrid version
+      description: Shown on the HAGrid entry under Settings → Devices & Services.
+      placeholder: "1.1.0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: install-method
+    attributes:
+      label: How did you install it?
+      options:
+        - HACS, as a custom repository
+        - Manual copy into config/custom_components
+        - Not installed yet, I couldn't get that far
+    validations:
+      required: true
+
+  - type: input
+    id: postcode
+    attributes:
+      label: Postcode area
+      description: The outward code only is enough (e.g. "SW1A"). It decides which DNO region you land in.
+      placeholder: "SW1A"
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what you got instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Log lines
+      description: |
+        The relevant lines from Settings → System → Logs, or `config/home-assistant.log`. If the
+        integration failed to load, the whole traceback is the useful part.
+      render: shell
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I restarted Home Assistant after installing or updating HAGrid
+        - label: I read the known limitations above
