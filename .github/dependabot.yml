@@ -1,0 +1,22 @@
+# Dependency updates.
+#
+# GitHub Actions only. The runtime and test dependencies (aiohttp in manifest.json, Home Assistant and
+# pytest in requirements_test.txt) are deliberately floating ranges, not pins: the weekly
+# compatibility job in tests.yml exists to catch Home Assistant moving under this integration, and a
+# bot opening a pull request every time Home Assistant publishes a patch would duplicate that job
+# with more noise. Action versions are pins, so they do get watched.
+
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/London
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "ci"
+    labels:
+      - dependencies

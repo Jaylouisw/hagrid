@@ -7,6 +7,10 @@ PLATFORMS = ["sensor"]
 CONF_POSTCODE = "postcode"
 CONF_REGION_ID = "region_id"
 CONF_DNO = "dno"
+# True when the entry's region came from the Home Assistant home location rather than a region the
+# user picked by hand. Only those entries are re-resolved on startup, so a user who chose a region
+# deliberately does not have that choice overwritten by moving their HA installation.
+CONF_USE_HOME_LOCATION = "use_home_location"
 CONF_UPDATE_INTERVAL = "update_interval"
 CONF_SHOW_INFRASTRUCTURE = "show_infrastructure"
 CONF_SHOW_LIVE_FAULTS = "show_live_faults"
@@ -60,6 +64,10 @@ DEFAULT_OSM_RADIUS_KM = 10  # km radius for OSM queries
 
 # API Endpoints
 CARBON_INTENSITY_API = "https://api.carbonintensity.org.uk"
+# Reverse geocoding for Great Britain only: the Carbon Intensity API's regional endpoints are
+# postcode-based, and Home Assistant knows its latitude and longitude but not its postcode. Free,
+# keyless, Open Government Licence, same as every other source on the GB path.
+POSTCODES_IO_API = "https://api.postcodes.io"
 UKPN_API_BASE = "https://ukpowernetworks.opendatasoft.com/api/explore/v2.1"
 NESO_API_BASE = "https://api.neso.energy/api/3/action"
 NATIONAL_GRID_API_BASE = "https://connecteddata.nationalgrid.co.uk/api/3/action"
@@ -303,7 +311,7 @@ ENERGINET_DATASETS = {
     "declaration": "DeclarationProduction",
 }
 
-# Elia (Belgium) dataset names  
+# Elia (Belgium) dataset names
 ELIA_DATASETS = {
     "imbalance_prices_1min": "ods001",
     "imbalance_prices_15min": "ods002",
@@ -358,7 +366,7 @@ UK_DNOS = {
     },
     "ukpn_lpn": {
         "name": "UK Power Networks - London",
-        "short": "UKPN LPN", 
+        "short": "UKPN LPN",
         "regions": ["London"],
         "api_base": UKPN_API_BASE,
     },
@@ -529,26 +537,26 @@ ELEXON_DATASETS = {
     "generation_per_unit": "/datasets/B1610",  # Actual Generation Output Per Generation Unit
     "generation_by_fuel": "/datasets/FUELINST",  # Instantaneous generation by fuel type
     "generation_half_hourly": "/datasets/FUELHH",  # Half-hourly generation outturn
-    
+
     # Physical notifications (planned output)
     "physical_notifications": "/datasets/PN",  # Physical Notifications per BMU
-    
+
     # Interconnector flows
     "interconnector_flows": "/generation/outturn/interconnectors",  # All interconnector flows
-    
+
     # Demand data
     "demand_outturn": "/datasets/INDO",  # Initial National Demand Outturn
     "transmission_demand": "/datasets/ITSDO",  # Transmission System Demand Outturn
     "demand_total": "/demand/actual/total",  # Total load (ATL/B0610)
-    
+
     # System data
     "system_frequency": "/datasets/FREQ",  # Real-time system frequency
     "system_warnings": "/datasets/SYSWARN",  # System warnings
-    
+
     # Balancing data
     "bid_offer_acceptances": "/datasets/BOALF",  # Bid-Offer Acceptance Levels
     "balancing_volumes": "/datasets/QAS",  # Balancing Services Volume
-    
+
     # Reference data
     "bm_units": "/reference/bmunits/all",  # All Balancing Mechanism Units
     "interconnectors": "/reference/interconnectors/all",  # All interconnectors
@@ -578,7 +586,7 @@ ELECTRICITY_MAPS_ZONES = {
     "GB": {"name": "Great Britain", "country": "UK"},
     "GB-NIR": {"name": "Northern Ireland", "country": "UK"},
     "IE": {"name": "Ireland", "country": "IE"},
-    
+
     # Europe
     "DE": {"name": "Germany", "country": "DE"},
     "FR": {"name": "France", "country": "FR"},
@@ -620,7 +628,7 @@ ELECTRICITY_MAPS_ZONES = {
     "EE": {"name": "Estonia", "country": "EE"},
     "LV": {"name": "Latvia", "country": "LV"},
     "LT": {"name": "Lithuania", "country": "LT"},
-    
+
     # North America
     "US-CAL-CISO": {"name": "California ISO", "country": "US"},
     "US-TEX-ERCO": {"name": "Texas ERCOT", "country": "US"},
@@ -635,7 +643,7 @@ ELECTRICITY_MAPS_ZONES = {
     "CA-QC": {"name": "Quebec", "country": "CA"},
     "CA-AB": {"name": "Alberta", "country": "CA"},
     "CA-BC": {"name": "British Columbia", "country": "CA"},
-    
+
     # Australia & NZ
     "AU-NSW": {"name": "New South Wales", "country": "AU"},
     "AU-VIC": {"name": "Victoria", "country": "AU"},
@@ -644,7 +652,7 @@ ELECTRICITY_MAPS_ZONES = {
     "AU-TAS": {"name": "Tasmania", "country": "AU"},
     "AU-WA": {"name": "Western Australia", "country": "AU"},
     "NZ": {"name": "New Zealand", "country": "NZ"},
-    
+
     # Asia
     "JP-TK": {"name": "Japan - Tokyo", "country": "JP"},
     "JP-CB": {"name": "Japan - Chubu", "country": "JP"},
@@ -657,7 +665,7 @@ ELECTRICITY_MAPS_ZONES = {
     "IN-KA": {"name": "India - Karnataka", "country": "IN"},
     "IN-TN": {"name": "India - Tamil Nadu", "country": "IN"},
     "SG": {"name": "Singapore", "country": "SG"},
-    
+
     # South America
     "BR-CS": {"name": "Brazil - Central-South", "country": "BR"},
     "BR-N": {"name": "Brazil - North", "country": "BR"},
@@ -666,7 +674,7 @@ ELECTRICITY_MAPS_ZONES = {
     "CL-SEN": {"name": "Chile - Central", "country": "CL"},
     "AR": {"name": "Argentina", "country": "AR"},
     "UY": {"name": "Uruguay", "country": "UY"},
-    
+
     # Africa & Middle East
     "ZA": {"name": "South Africa", "country": "ZA"},
     "IL": {"name": "Israel", "country": "IL"},
@@ -684,7 +692,7 @@ EIA_REGIONS = {
     "NYIS": {"name": "New York ISO", "type": "iso"},
     "PJM": {"name": "PJM Interconnection", "type": "iso"},
     "SWPP": {"name": "Southwest Power Pool", "type": "iso"},
-    
+
     # Major interconnections
     "US48": {"name": "Lower 48 States", "type": "region"},
     "TEN": {"name": "Eastern Interconnection", "type": "region"},
@@ -733,7 +741,7 @@ AUSTRALIA_REGIONS = {
     "QLD1": {"name": "Queensland", "network": "NEM"},
     "SA1": {"name": "South Australia", "network": "NEM"},
     "TAS1": {"name": "Tasmania", "network": "NEM"},
-    
+
     # Wholesale Electricity Market (WEM)
     "WEM": {"name": "Western Australia", "network": "WEM"},
 }

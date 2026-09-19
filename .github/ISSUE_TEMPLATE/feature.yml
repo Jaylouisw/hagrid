@@ -1,0 +1,42 @@
+name: Feature request
+description: Suggest something HAGrid should do
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which part?
+      options:
+        - DNO data (faults, substations, power lines)
+        - Carbon intensity and forecast
+        - Generation mix
+        - The map card
+        - Services and automations
+        - Other grids outside GB
+        - Something else
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What should it do
+    validations:
+      required: true
+
+  - type: textarea
+    id: source
+    attributes:
+      label: Is there a data source?
+      description: |
+        For DNO requests this is the part that matters most: a public API endpoint and a sample
+        response for your network is most of the work. Without one this stays on the roadmap.
+      placeholder: "https://... returns JSON like {...}"
+
+  - type: checkboxes
+    id: copilot
+    attributes:
+      label: Copilot
+      options:
+        - label: This is well scoped enough that Copilot could attempt it

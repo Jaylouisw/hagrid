@@ -1,68 +1,62 @@
-name: CI
+name: Tests
+
+# The bugs this integration has shipped were all import-time or registration-time failures:
+# 1.0.0 could not be imported at all (a dataclass field-order error), which Home Assistant reported
+# to users as "Config flow could not be loaded: Invalid handler specified". These tests run the
+# integration against a real, current Home Assistant so that class of failure cannot ship silently.
+#
+# Two jobs, because "it works on the newest Home Assistant" and "it still works on the version
+# hacs.json claims to support" are different claims, and only the first one has ever been checked.
 
 on:
   push:
     branches: [main]
   pull_request:
   schedule:
+    # Weekly, so a Home Assistant release that breaks the integration's imports shows up here even
+    # when nothing is pushed. Monday 06:23 UTC, matching the local compatibility check.
     - cron: "23 6 * * 1"
   workflow_dispatch:
 
-concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
-
-permissions:
-  contents: read
-
 jobs:
-  hacs:
-    name: HACS validation
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        # v4.4.0
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-      - name: Run HACS validation
-        # 22.5.0
-        uses: hacs/action@d556e736723344f83838d08488c983a15381059a
-        with:
-          category: integration
-
-  hassfest:
-    name: Home Assistant metadata validation
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        # v4.4.0
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-      - name: Run hassfest
-        # home-assistant/actions commit 58bff37
-        uses: home-assistant/actions/hassfest@58bff37c8947f690ace498be413a9b78d6f30f93
-
-  tests:
-    name: Import and registration tests
+  shape:
+    name: Tests (${{ matrix.label }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.12", "3.13"]
+        include:
+          # The gate that matters day to day: newest Home Assistant on PyPI.
+          - label: newest Home Assistant
+            python: "3.13"
+            homeassistant: ""
+          # The claim hacs.json makes, which nothing had ever checked. Home Assistant 2024.1 predates
+          # the Python 3.13 requirement, so this job pins 3.12.
+          - label: declared floor, Home Assistant 2024.1
+            python: "3.12"
+            homeassistant: "homeassistant==2024.1.0"
     steps:
       - name: Checkout
-        # v4.4.0
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        # v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
       - name: Set up Python
-        # v5.6.0
-        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        # v7
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
         with:
-          python-version: ${{ matrix.python-version }}
-          cache: pip
-          cache-dependency-path: requirements_test.txt
+          python-version: ${{ matrix.python }}
+
       - name: Install test dependencies
         run: |
           python -m pip install --upgrade pip
           python -m pip install -r requirements_test.txt
-      - name: Show Home Assistant version under test
+          # Empty for the newest-Home-Assistant job, which resolves from requirements_test.txt.
+          if [ -n "${{ matrix.homeassistant }}" ]; then
+            python -m pip install "${{ matrix.homeassistant }}"
+          fi
+
+      - name: Show the Home Assistant version under test
         run: python -c "from homeassistant.const import __version__; print('homeassistant', __version__)"
-      - name: Run tests
+
+      - name: Run the shape tests
         run: python -m pytest -q tests/

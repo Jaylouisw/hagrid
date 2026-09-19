@@ -1,0 +1,38 @@
+name: HACS
+
+# HACS reads the repository, not the code: it wants custom_components/ at the root, a release to
+# install from, and a repository it can present in the store. The 1.0.0 bug was exactly this layer
+# (a nested layout HACS could never see), so it gets its own check rather than being assumed.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "custom_components/**"
+      - "hacs.json"
+      - "README.md"
+      - ".github/workflows/hacs.yml"
+  pull_request:
+    paths:
+      - "custom_components/**"
+      - "hacs.json"
+      - "README.md"
+      - ".github/workflows/hacs.yml"
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+jobs:
+  validate:
+    name: HACS validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: hacs/action@main
+        with:
+          category: integration
+          # HACS looks for brand assets at custom_components/hagrid/brand/icon.png. They are not
+          # in the repository. That check only gates inclusion in the default HACS store, and this
+          # integration is installed as a custom repository, so it is ignored and tracked as an
+          # issue rather than left failing every run.
+          ignore: brands

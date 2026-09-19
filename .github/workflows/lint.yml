@@ -1,0 +1,36 @@
+name: Lint
+
+# The rule set lives in pyproject.toml, not here, so this job runs exactly what a developer runs.
+# ruff is pinned to a version instead of "latest" for the same reason: an unpinned linter means a
+# green tree can turn red overnight with no code change, and a red gate is one people learn to skip.
+# Bump RUFF_VERSION and the [tool.ruff] block in the same commit.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  RUFF_VERSION: "0.16.8"
+
+jobs:
+  ruff:
+    name: Lint (ruff)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+
+      - name: Install ruff ${{ env.RUFF_VERSION }}
+        run: python -m pip install "ruff==${RUFF_VERSION}"
+
+      - name: ruff check
+        run: ruff check .
+
+      # Formatting is deliberately not gated yet: the tree has never been run through a formatter,
+      # so a format check would be red from the first commit and would sit next to 8,000 lines of
+      # reformatting in the same diff as real changes. Tracked as an issue.

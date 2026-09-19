@@ -7,38 +7,38 @@ import logging
 import math
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
-from typing import Any
+from datetime import UTC, datetime, timedelta
+from typing import Any, ClassVar
 from xml.etree import ElementTree as ET
 
 import aiohttp
 
 from .const import (
+    AUSTRALIA_REGIONS,
     CARBON_INTENSITY_API,
-    UKPN_API_BASE,
-    UKPN_DATASETS,
-    NESO_API_BASE,
-    NATIONAL_GRID_API_BASE,
-    SSEN_NERDA_API_BASE,
-    ENERGY_DASHBOARD_API_BASE,
-    OVERPASS_API,
-    NESO_DATASETS,
-    NATIONAL_GRID_DATASETS,
-    ELEXON_API_BASE,
-    ELEXON_DATASETS,
-    UK_INTERCONNECTORS,
+    EIA_API_BASE,
+    EIA_REGIONS,
     # Global API endpoints
     ELECTRICITY_MAPS_API_BASE,
-    EIA_API_BASE,
-    ENTSOE_API_BASE,
-    OPENELECTRICITY_API_BASE,
-    REE_ESIOS_API_BASE,
-    RTE_API_BASE,
     # Zone/region mappings
     ELECTRICITY_MAPS_ZONES,
-    EIA_REGIONS,
+    ELEXON_API_BASE,
+    ENERGY_DASHBOARD_API_BASE,
+    ENTSOE_API_BASE,
     ENTSOE_AREAS,
-    AUSTRALIA_REGIONS,
+    NATIONAL_GRID_API_BASE,
+    NATIONAL_GRID_DATASETS,
+    NESO_API_BASE,
+    NESO_DATASETS,
+    OPENELECTRICITY_API_BASE,
+    OVERPASS_API,
+    POSTCODES_IO_API,
+    REE_ESIOS_API_BASE,
+    RTE_API_BASE,
+    SSEN_NERDA_API_BASE,
+    UK_INTERCONNECTORS,
+    UKPN_API_BASE,
+    UKPN_DATASETS,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -47,7 +47,7 @@ _LOGGER = logging.getLogger(__name__)
 @dataclass
 class CarbonIntensityData:
     """Carbon intensity data."""
-    
+
     forecast: int
     actual: int | None
     index: str  # very low, low, moderate, high, very high
@@ -58,7 +58,7 @@ class CarbonIntensityData:
 @dataclass
 class GenerationMix:
     """Generation mix data."""
-    
+
     fuel: str
     percentage: float
 
@@ -66,7 +66,7 @@ class GenerationMix:
 @dataclass
 class RegionalData:
     """Regional grid data."""
-    
+
     region_id: int
     dno_region: str
     short_name: str
@@ -77,7 +77,7 @@ class RegionalData:
 @dataclass
 class Substation:
     """Substation data."""
-    
+
     id: str
     name: str
     substation_type: str  # grid, primary, secondary
@@ -93,7 +93,7 @@ class Substation:
 @dataclass
 class PowerLine:
     """Power line data."""
-    
+
     id: str
     line_type: str  # 33kv, hv, lv
     coordinates: list[tuple[float, float]]  # List of (lat, lon) pairs
@@ -104,7 +104,7 @@ class PowerLine:
 @dataclass
 class LiveFault:
     """Live fault/power cut data."""
-    
+
     id: str
     incident_type: str  # planned, unplanned
     status: str
@@ -120,7 +120,7 @@ class LiveFault:
 @dataclass
 class EmbeddedGeneration:
     """Embedded generation/storage site."""
-    
+
     id: str
     name: str
     technology: str  # solar, wind, battery, etc
@@ -135,7 +135,7 @@ class EmbeddedGeneration:
 @dataclass
 class OSMPowerFeature:
     """OpenStreetMap power infrastructure feature."""
-    
+
     osm_id: int
     osm_type: str  # node, way, relation
     power_type: str  # substation, line, tower, generator, etc
@@ -151,7 +151,7 @@ class OSMPowerFeature:
 @dataclass
 class SystemData:
     """Real-time system data from NESO/Energy Dashboard."""
-    
+
     timestamp: datetime
     demand_mw: float | None = None
     frequency_hz: float | None = None
@@ -161,7 +161,7 @@ class SystemData:
 @dataclass
 class BMUnit:
     """Balancing Mechanism Unit - Individual generation/demand unit."""
-    
+
     bm_unit_id: str
     name: str | None
     fuel_type: str
@@ -174,7 +174,7 @@ class BMUnit:
 @dataclass
 class GenerationUnit:
     """Real-time generation output for a specific unit."""
-    
+
     bm_unit_id: str
     fuel_type: str
     output_mw: float
@@ -183,10 +183,10 @@ class GenerationUnit:
     name: str | None = None
 
 
-@dataclass 
+@dataclass
 class FuelTypeGeneration:
     """Generation output aggregated by fuel type."""
-    
+
     fuel_type: str
     output_mw: float
     timestamp: datetime
@@ -196,7 +196,7 @@ class FuelTypeGeneration:
 @dataclass
 class InterconnectorFlow:
     """Power flow through an interconnector."""
-    
+
     interconnector_id: str
     name: str
     country: str
@@ -209,7 +209,7 @@ class InterconnectorFlow:
 @dataclass
 class SystemFrequency:
     """Real-time system frequency."""
-    
+
     frequency_hz: float
     timestamp: datetime
 
@@ -217,7 +217,7 @@ class SystemFrequency:
 @dataclass
 class DemandData:
     """National/transmission demand data."""
-    
+
     demand_mw: float
     timestamp: datetime
     demand_type: str  # "national", "transmission"
@@ -227,7 +227,7 @@ class DemandData:
 @dataclass
 class CircuitFlow:
     """Power flow in a metered circuit (aggregated view)."""
-    
+
     circuit_id: str
     circuit_type: str  # "generation", "interconnector", "demand"
     name: str
@@ -245,7 +245,7 @@ class CircuitFlow:
 @dataclass
 class ZoneCarbonIntensity:
     """Carbon intensity data for any global zone."""
-    
+
     zone: str
     zone_name: str
     carbon_intensity: float  # gCO2eq/kWh
@@ -259,7 +259,7 @@ class ZoneCarbonIntensity:
 @dataclass
 class ZonePowerBreakdown:
     """Power generation breakdown for any global zone."""
-    
+
     zone: str
     zone_name: str
     power_consumption_mw: float | None
@@ -275,7 +275,7 @@ class ZonePowerBreakdown:
 @dataclass
 class CrossBorderFlow:
     """Power flow between two zones/countries."""
-    
+
     from_zone: str
     to_zone: str
     flow_mw: float
@@ -286,7 +286,7 @@ class CrossBorderFlow:
 @dataclass
 class PriceData:
     """Electricity price data."""
-    
+
     zone: str
     price: float
     currency: str
@@ -298,20 +298,19 @@ class PriceData:
 
 class GridAPIClient(ABC):
     """Abstract base class for grid API clients."""
-    
+
     def __init__(self, session: aiohttp.ClientSession) -> None:
         """Initialize the client."""
         self.session = session
-    
+
     @abstractmethod
     async def get_carbon_intensity(
-        self, 
+        self,
         postcode: str | None = None,
         region_id: int | None = None,
     ) -> CarbonIntensityData | None:
         """Get current carbon intensity."""
-        pass
-    
+
     @abstractmethod
     async def get_generation_mix(
         self,
@@ -319,17 +318,91 @@ class GridAPIClient(ABC):
         region_id: int | None = None,
     ) -> list[GenerationMix]:
         """Get current generation mix."""
-        pass
+
+
+class GeocoderUnavailable(Exception):
+    """The reverse geocode lookup could not be completed."""
+
+
+@dataclass
+class ResolvedLocation:
+    """A coordinate expressed the way the grid APIs want it."""
+
+    outcode: str
+    latitude: float
+    longitude: float
+    country: str
+
+
+class PostcodesIoClient:
+    """Reverse geocoding for Great Britain, from postcodes.io.
+
+    Home Assistant knows its latitude and longitude. The Carbon Intensity API's regional endpoints
+    want a postcode. One lookup bridges the two, and outside Great Britain the service answers with a
+    null result rather than an error, which makes it usable as the "is this address in GB" check too.
+    Free, keyless and Open Government Licence, like every other source on the GB path.
+    """
+
+    def __init__(self, session: aiohttp.ClientSession) -> None:
+        """Initialize the client."""
+        self.session = session
+        self.base_url = POSTCODES_IO_API
+
+    async def reverse_geocode(
+        self, latitude: float, longitude: float
+    ) -> ResolvedLocation | None:
+        """Nearest postcode to a coordinate, or None when the coordinate is not in Great Britain.
+
+        Raises GeocoderUnavailable when the lookup could not be made at all: "this address is not in
+        Great Britain" and "I could not reach the lookup service" need different words in front of a
+        user, and both measured cases are real (the default Home Assistant location is outside GB,
+        and a service can be down).
+        """
+        params = {"lon": longitude, "lat": latitude, "limit": 1}
+        try:
+            async with self.session.get(
+                f"{self.base_url}/postcodes", params=params
+            ) as response:
+                if response.status != 200:
+                    raise GeocoderUnavailable(
+                        f"postcodes.io returned HTTP {response.status}"
+                    )
+                payload = await response.json()
+        except GeocoderUnavailable:
+            raise
+        except Exception as err:
+            raise GeocoderUnavailable(f"postcodes.io request failed: {err}") from err
+
+        results = payload.get("result") or []
+        if not results:
+            _LOGGER.info(
+                "No GB postcode within range of %.4f, %.4f; the grid APIs are GB-only",
+                latitude,
+                longitude,
+            )
+            return None
+
+        nearest = results[0]
+        outcode = nearest.get("outcode")
+        if not outcode:
+            return None
+
+        return ResolvedLocation(
+            outcode=outcode,
+            latitude=nearest.get("latitude", latitude),
+            longitude=nearest.get("longitude", longitude),
+            country=nearest.get("country", ""),
+        )
 
 
 class CarbonIntensityClient(GridAPIClient):
     """Client for UK Carbon Intensity API (NESO)."""
-    
+
     def __init__(self, session: aiohttp.ClientSession) -> None:
         """Initialize the client."""
         super().__init__(session)
         self.base_url = CARBON_INTENSITY_API
-    
+
     async def _request(self, endpoint: str) -> dict | None:
         """Make a request to the API."""
         url = f"{self.base_url}{endpoint}"
@@ -342,9 +415,9 @@ class CarbonIntensityClient(GridAPIClient):
         except Exception as e:
             _LOGGER.error("Carbon Intensity API request failed: %s", e)
             return None
-    
+
     async def get_carbon_intensity(
-        self, 
+        self,
         postcode: str | None = None,
         region_id: int | None = None,
     ) -> CarbonIntensityData | None:
@@ -355,11 +428,11 @@ class CarbonIntensityClient(GridAPIClient):
             endpoint = f"/regional/regionid/{region_id}"
         else:
             endpoint = "/intensity"
-        
+
         data = await self._request(endpoint)
         if not data or "data" not in data:
             return None
-        
+
         try:
             # Handle different response formats
             if "regions" in data["data"][0]:
@@ -372,7 +445,7 @@ class CarbonIntensityClient(GridAPIClient):
             else:
                 # National response
                 intensity_data = data["data"][0].get("intensity", {})
-            
+
             return CarbonIntensityData(
                 forecast=intensity_data.get("forecast", 0),
                 actual=intensity_data.get("actual"),
@@ -387,7 +460,7 @@ class CarbonIntensityClient(GridAPIClient):
         except (KeyError, IndexError, ValueError) as e:
             _LOGGER.error("Error parsing carbon intensity data: %s", e)
             return None
-    
+
     async def get_generation_mix(
         self,
         postcode: str | None = None,
@@ -400,11 +473,11 @@ class CarbonIntensityClient(GridAPIClient):
             endpoint = f"/regional/regionid/{region_id}"
         else:
             endpoint = "/generation"
-        
+
         data = await self._request(endpoint)
         if not data or "data" not in data:
             return []
-        
+
         try:
             # Extract generation mix from response
             if "regions" in data["data"][0]:
@@ -413,7 +486,7 @@ class CarbonIntensityClient(GridAPIClient):
                 mix_data = data["data"][0]["data"][0].get("generationmix", [])
             else:
                 mix_data = data["data"][0].get("generationmix", [])
-            
+
             return [
                 GenerationMix(fuel=item["fuel"], percentage=item["perc"])
                 for item in mix_data
@@ -421,7 +494,7 @@ class CarbonIntensityClient(GridAPIClient):
         except (KeyError, IndexError) as e:
             _LOGGER.error("Error parsing generation mix: %s", e)
             return []
-    
+
     async def get_regional_data(
         self,
         postcode: str | None = None,
@@ -434,11 +507,11 @@ class CarbonIntensityClient(GridAPIClient):
             endpoint = f"/regional/regionid/{region_id}"
         else:
             return None
-        
+
         data = await self._request(endpoint)
         if not data or "data" not in data:
             return None
-        
+
         try:
             if "regions" in data["data"][0]:
                 region = data["data"][0]["regions"][0]
@@ -448,25 +521,20 @@ class CarbonIntensityClient(GridAPIClient):
                 region = data["data"][0]
                 from_time = region.get("data", [{}])[0].get("from", "")
                 to_time = region.get("data", [{}])[0].get("to", "")
-                if "data" in region:
-                    intensity_source = region["data"][0]
-                else:
-                    intensity_source = region
-            
             intensity_data = region.get("intensity", {})
-            if "data" in region and region["data"]:
+            if region.get("data"):
                 intensity_data = region["data"][0].get("intensity", intensity_data)
-            
+
             generation_mix = []
             mix_data = region.get("generationmix", [])
-            if "data" in region and region["data"]:
+            if region.get("data"):
                 mix_data = region["data"][0].get("generationmix", mix_data)
-            
+
             for item in mix_data:
                 generation_mix.append(
                     GenerationMix(fuel=item["fuel"], percentage=item["perc"])
                 )
-            
+
             return RegionalData(
                 region_id=region.get("regionid", 0),
                 dno_region=region.get("dnoregion", "Unknown"),
@@ -483,13 +551,13 @@ class CarbonIntensityClient(GridAPIClient):
         except Exception as e:
             _LOGGER.error("Error parsing regional data: %s", e)
             return None
-    
+
     async def get_all_regions(self) -> list[RegionalData]:
         """Get data for all GB regions."""
         data = await self._request("/regional")
         if not data or "data" not in data:
             return []
-        
+
         regions = []
         try:
             for region_data in data["data"][0].get("regions", []):
@@ -498,7 +566,7 @@ class CarbonIntensityClient(GridAPIClient):
                     GenerationMix(fuel=item["fuel"], percentage=item["perc"])
                     for item in region_data.get("generationmix", [])
                 ]
-                
+
                 regions.append(RegionalData(
                     region_id=region_data.get("regionid", 0),
                     dno_region=region_data.get("dnoregion", "Unknown"),
@@ -518,9 +586,9 @@ class CarbonIntensityClient(GridAPIClient):
                 ))
         except Exception as e:
             _LOGGER.error("Error parsing all regions: %s", e)
-        
+
         return regions
-    
+
     async def get_intensity_forecast(
         self,
         hours: int = 24,
@@ -534,16 +602,15 @@ class CarbonIntensityClient(GridAPIClient):
             endpoint = f"/regional/intensity/{{now}}/fw{hours}h/regionid/{region_id}"
         else:
             endpoint = f"/intensity/{{now}}/fw{hours}h"
-        
+
         # Replace {now} with actual datetime
-        from datetime import timezone
-        now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%MZ")
+        now = datetime.now(UTC).strftime("%Y-%m-%dT%H:%MZ")
         endpoint = endpoint.replace("{now}", now)
-        
+
         data = await self._request(endpoint)
         if not data or "data" not in data:
             return []
-        
+
         forecasts = []
         try:
             for item in data["data"]:
@@ -553,7 +620,7 @@ class CarbonIntensityClient(GridAPIClient):
                     intensity = item["regions"][0].get("intensity", {})
                 else:
                     continue
-                
+
                 forecasts.append(CarbonIntensityData(
                     forecast=intensity.get("forecast", 0),
                     actual=intensity.get("actual"),
@@ -563,21 +630,21 @@ class CarbonIntensityClient(GridAPIClient):
                 ))
         except Exception as e:
             _LOGGER.error("Error parsing intensity forecast: %s", e)
-        
+
         return forecasts
 
 
 class UKPNClient(GridAPIClient):
     """Client for UK Power Networks Open Data API."""
-    
+
     def __init__(self, session: aiohttp.ClientSession) -> None:
         """Initialize the client."""
         super().__init__(session)
         self.base_url = UKPN_API_BASE
-    
+
     async def _request(
-        self, 
-        dataset: str, 
+        self,
+        dataset: str,
         limit: int = 100,
         offset: int = 0,
         where: str | None = None,
@@ -593,7 +660,7 @@ class UKPNClient(GridAPIClient):
             params["where"] = where
         if select:
             params["select"] = select
-        
+
         try:
             async with self.session.get(url, params=params) as response:
                 if response.status == 200:
@@ -603,15 +670,15 @@ class UKPNClient(GridAPIClient):
         except Exception as e:
             _LOGGER.error("UKPN API request failed: %s", e)
             return None
-    
+
     async def get_carbon_intensity(
-        self, 
+        self,
         postcode: str | None = None,
         region_id: int | None = None,
     ) -> CarbonIntensityData | None:
         """Not implemented for UKPN - use CarbonIntensityClient."""
         return None
-    
+
     async def get_generation_mix(
         self,
         postcode: str | None = None,
@@ -619,13 +686,13 @@ class UKPNClient(GridAPIClient):
     ) -> list[GenerationMix]:
         """Not implemented for UKPN - use CarbonIntensityClient."""
         return []
-    
+
     async def get_live_faults(self, limit: int = 100) -> list[LiveFault]:
         """Get live power cut/fault data."""
         data = await self._request(UKPN_DATASETS["live_faults"], limit=limit)
         if not data or "results" not in data:
             return []
-        
+
         faults = []
         for record in data["results"]:
             fields = record.get("record", {}).get("fields", record)
@@ -646,11 +713,11 @@ class UKPNClient(GridAPIClient):
             except Exception as e:
                 _LOGGER.debug("Error parsing fault record: %s", e)
                 continue
-        
+
         return faults
-    
+
     async def get_grid_primary_substations(
-        self, 
+        self,
         limit: int = 100,
         bbox: tuple[float, float, float, float] | None = None,
     ) -> list[Substation]:
@@ -659,15 +726,15 @@ class UKPNClient(GridAPIClient):
         if bbox:
             # bbox = (min_lat, min_lon, max_lat, max_lon)
             where = f"within_distance(geo_point_2d, geom'POINT({bbox[1]} {bbox[0]})', {bbox[3]-bbox[1]}km)"
-        
+
         data = await self._request(
-            UKPN_DATASETS["grid_primary_sites"], 
+            UKPN_DATASETS["grid_primary_sites"],
             limit=limit,
             where=where,
         )
         if not data or "results" not in data:
             return []
-        
+
         substations = []
         for record in data["results"]:
             fields = record.get("record", {}).get("fields", record)
@@ -675,7 +742,7 @@ class UKPNClient(GridAPIClient):
                 geo = fields.get("geo_point_2d", {})
                 if not geo:
                     continue
-                
+
                 substations.append(Substation(
                     id=str(fields.get("gsp_gis_id", record.get("record", {}).get("id", ""))),
                     name=fields.get("substation_name", "Unknown"),
@@ -692,9 +759,9 @@ class UKPNClient(GridAPIClient):
             except Exception as e:
                 _LOGGER.debug("Error parsing substation record: %s", e)
                 continue
-        
+
         return substations
-    
+
     async def get_secondary_substations(
         self,
         limit: int = 100,
@@ -704,7 +771,7 @@ class UKPNClient(GridAPIClient):
         where = None
         if bbox:
             where = f"within_distance(geo_point_2d, geom'POINT({bbox[1]} {bbox[0]})', {bbox[3]-bbox[1]}km)"
-        
+
         data = await self._request(
             UKPN_DATASETS["secondary_sites"],
             limit=limit,
@@ -712,7 +779,7 @@ class UKPNClient(GridAPIClient):
         )
         if not data or "results" not in data:
             return []
-        
+
         substations = []
         for record in data["results"]:
             fields = record.get("record", {}).get("fields", record)
@@ -720,7 +787,7 @@ class UKPNClient(GridAPIClient):
                 geo = fields.get("geo_point_2d", {})
                 if not geo:
                     continue
-                
+
                 substations.append(Substation(
                     id=str(fields.get("asset_id", record.get("record", {}).get("id", ""))),
                     name=fields.get("substation_name", "Unknown"),
@@ -738,9 +805,9 @@ class UKPNClient(GridAPIClient):
             except Exception as e:
                 _LOGGER.debug("Error parsing secondary substation: %s", e)
                 continue
-        
+
         return substations
-    
+
     async def get_overhead_lines_33kv(
         self,
         limit: int = 100,
@@ -753,7 +820,7 @@ class UKPNClient(GridAPIClient):
         )
         if not data or "results" not in data:
             return []
-        
+
         lines = []
         for record in data["results"]:
             fields = record.get("record", {}).get("fields", record)
@@ -761,7 +828,7 @@ class UKPNClient(GridAPIClient):
                 geo_shape = fields.get("geo_shape", {})
                 if not geo_shape or "coordinates" not in geo_shape:
                     continue
-                
+
                 # Convert coordinates from [lon, lat] to (lat, lon)
                 coords = geo_shape.get("coordinates", [])
                 if geo_shape.get("type") == "LineString":
@@ -770,7 +837,7 @@ class UKPNClient(GridAPIClient):
                     coordinates = [(c[1], c[0]) for segment in coords for c in segment]
                 else:
                     continue
-                
+
                 lines.append(PowerLine(
                     id=str(record.get("record", {}).get("id", "")),
                     line_type="33kv",
@@ -781,9 +848,9 @@ class UKPNClient(GridAPIClient):
             except Exception as e:
                 _LOGGER.debug("Error parsing 33kV line: %s", e)
                 continue
-        
+
         return lines
-    
+
     async def get_overhead_lines_hv(
         self,
         limit: int = 100,
@@ -796,7 +863,7 @@ class UKPNClient(GridAPIClient):
         )
         if not data or "results" not in data:
             return []
-        
+
         lines = []
         for record in data["results"]:
             fields = record.get("record", {}).get("fields", record)
@@ -804,7 +871,7 @@ class UKPNClient(GridAPIClient):
                 geo_shape = fields.get("geo_shape", {})
                 if not geo_shape or "coordinates" not in geo_shape:
                     continue
-                
+
                 coords = geo_shape.get("coordinates", [])
                 if geo_shape.get("type") == "LineString":
                     coordinates = [(c[1], c[0]) for c in coords]
@@ -812,7 +879,7 @@ class UKPNClient(GridAPIClient):
                     coordinates = [(c[1], c[0]) for segment in coords for c in segment]
                 else:
                     continue
-                
+
                 lines.append(PowerLine(
                     id=str(record.get("record", {}).get("id", "")),
                     line_type="hv",
@@ -823,9 +890,9 @@ class UKPNClient(GridAPIClient):
             except Exception as e:
                 _LOGGER.debug("Error parsing HV line: %s", e)
                 continue
-        
+
         return lines
-    
+
     async def get_embedded_generation(
         self,
         limit: int = 100,
@@ -835,7 +902,7 @@ class UKPNClient(GridAPIClient):
         where = None
         if technology:
             where = f"technology_type='{technology}'"
-        
+
         data = await self._request(
             UKPN_DATASETS["embedded_capacity"],
             limit=limit,
@@ -843,7 +910,7 @@ class UKPNClient(GridAPIClient):
         )
         if not data or "results" not in data:
             return []
-        
+
         sites = []
         for record in data["results"]:
             fields = record.get("record", {}).get("fields", record)
@@ -851,7 +918,7 @@ class UKPNClient(GridAPIClient):
                 geo = fields.get("geo_point_2d", {})
                 if not geo:
                     continue
-                
+
                 sites.append(EmbeddedGeneration(
                     id=str(fields.get("ecr_ref", record.get("record", {}).get("id", ""))),
                     name=fields.get("site_name", "Unknown"),
@@ -866,18 +933,18 @@ class UKPNClient(GridAPIClient):
             except Exception as e:
                 _LOGGER.debug("Error parsing embedded generation: %s", e)
                 continue
-        
+
         return sites
 
 
 class OverpassClient:
     """Client for OpenStreetMap Overpass API - power infrastructure."""
-    
+
     def __init__(self, session: aiohttp.ClientSession) -> None:
         """Initialize the client."""
         self.session = session
         self.base_url = OVERPASS_API
-    
+
     async def _query(self, query: str) -> dict | None:
         """Execute an Overpass query."""
         try:
@@ -890,13 +957,13 @@ class OverpassClient:
                     return await response.json()
                 _LOGGER.error("Overpass API error: %s", response.status)
                 return None
-        except asyncio.TimeoutError:
+        except TimeoutError:
             _LOGGER.error("Overpass API timeout")
             return None
         except Exception as e:
             _LOGGER.error("Overpass API request failed: %s", e)
             return None
-    
+
     def _build_bbox(
         self,
         lat: float,
@@ -907,14 +974,14 @@ class OverpassClient:
         # Approximate degrees per km
         lat_delta = radius_km / 111.0
         lon_delta = radius_km / (111.0 * math.cos(math.radians(lat)))
-        
+
         return (
             lat - lat_delta,  # south
             lon - lon_delta,  # west
             lat + lat_delta,  # north
             lon + lon_delta,  # east
         )
-    
+
     async def get_power_infrastructure(
         self,
         lat: float,
@@ -924,7 +991,7 @@ class OverpassClient:
     ) -> list[OSMPowerFeature]:
         """Get power infrastructure within radius of a point."""
         bbox = self._build_bbox(lat, lon, radius_km)
-        
+
         # Build Overpass QL query for power infrastructure
         query = f"""
         [out:json][timeout:30];
@@ -936,28 +1003,28 @@ class OverpassClient:
           node["power"="generator"]({bbox[0]},{bbox[1]},{bbox[2]},{bbox[3]});
           node["power"="tower"]({bbox[0]},{bbox[1]},{bbox[2]},{bbox[3]});
         """
-        
+
         if include_lines:
             query += f"""
           way["power"="line"]({bbox[0]},{bbox[1]},{bbox[2]},{bbox[3]});
           way["power"="minor_line"]({bbox[0]},{bbox[1]},{bbox[2]},{bbox[3]});
             """
-        
+
         query += """
         );
         out center;
         """
-        
+
         data = await self._query(query)
         if not data or "elements" not in data:
             return []
-        
+
         features: list[OSMPowerFeature] = []
         for element in data["elements"]:
             try:
                 osm_type = element.get("type", "node")
                 tags = element.get("tags", {})
-                
+
                 # Get coordinates (center for ways)
                 if osm_type == "node":
                     lat_val = element.get("lat", 0)
@@ -968,7 +1035,7 @@ class OverpassClient:
                     lon_val = center.get("lon", 0)
                 else:
                     continue
-                
+
                 features.append(OSMPowerFeature(
                     osm_id=element.get("id", 0),
                     osm_type=osm_type,
@@ -983,9 +1050,9 @@ class OverpassClient:
             except Exception as e:
                 _LOGGER.debug("Error parsing OSM element: %s", e)
                 continue
-        
+
         return features
-    
+
     async def get_substations(
         self,
         lat: float,
@@ -994,7 +1061,7 @@ class OverpassClient:
     ) -> list[OSMPowerFeature]:
         """Get substations within radius."""
         bbox = self._build_bbox(lat, lon, radius_km)
-        
+
         query = f"""
         [out:json][timeout:30];
         (
@@ -1004,17 +1071,17 @@ class OverpassClient:
         );
         out center tags;
         """
-        
+
         data = await self._query(query)
         if not data or "elements" not in data:
             return []
-        
+
         substations: list[OSMPowerFeature] = []
         for element in data["elements"]:
             try:
                 tags = element.get("tags", {})
                 osm_type = element.get("type", "node")
-                
+
                 if osm_type == "node":
                     lat_val = element.get("lat", 0)
                     lon_val = element.get("lon", 0)
@@ -1022,7 +1089,7 @@ class OverpassClient:
                     center = element.get("center", {})
                     lat_val = center.get("lat", 0)
                     lon_val = center.get("lon", 0)
-                
+
                 substations.append(OSMPowerFeature(
                     osm_id=element.get("id", 0),
                     osm_type=osm_type,
@@ -1037,18 +1104,18 @@ class OverpassClient:
             except Exception as e:
                 _LOGGER.debug("Error parsing OSM substation: %s", e)
                 continue
-        
+
         return substations
 
 
 class NESOClient:
     """Client for NESO (National Energy System Operator) API."""
-    
+
     def __init__(self, session: aiohttp.ClientSession) -> None:
         """Initialize the client."""
         self.session = session
         self.base_url = NESO_API_BASE
-    
+
     async def _request(self, endpoint: str, params: dict | None = None) -> dict | None:
         """Make a request to the NESO API."""
         url = f"{self.base_url}/{endpoint}"
@@ -1061,7 +1128,7 @@ class NESOClient:
         except Exception as e:
             _LOGGER.error("NESO API request failed: %s", e)
             return None
-    
+
     async def get_embedded_forecasts(self, limit: int = 48) -> list[dict]:
         """Get embedded wind and solar forecasts."""
         params = {
@@ -1072,7 +1139,7 @@ class NESOClient:
         if not data or not data.get("success"):
             return []
         return data.get("result", {}).get("records", [])
-    
+
     async def get_demand_forecast(self, limit: int = 48) -> list[dict]:
         """Get demand forecast data."""
         params = {
@@ -1083,7 +1150,7 @@ class NESOClient:
         if not data or not data.get("success"):
             return []
         return data.get("result", {}).get("records", [])
-    
+
     async def get_package_list(self) -> list[str]:
         """Get list of available datasets."""
         data = await self._request("package_list")
@@ -1094,7 +1161,7 @@ class NESOClient:
 
 class NationalGridClient:
     """Client for National Grid Connected Data API (CKAN)."""
-    
+
     def __init__(
         self,
         session: aiohttp.ClientSession,
@@ -1104,14 +1171,14 @@ class NationalGridClient:
         self.session = session
         self.base_url = NATIONAL_GRID_API_BASE
         self.api_key = api_key
-    
+
     async def _request(self, endpoint: str, params: dict | None = None) -> dict | None:
         """Make a request to the National Grid API."""
         url = f"{self.base_url}/{endpoint}"
         headers = {}
         if self.api_key:
             headers["Authorization"] = self.api_key
-        
+
         try:
             async with self.session.get(url, params=params, headers=headers) as response:
                 if response.status == 200:
@@ -1121,28 +1188,28 @@ class NationalGridClient:
         except Exception as e:
             _LOGGER.error("National Grid API request failed: %s", e)
             return None
-    
+
     async def get_package_info(self, package_id: str) -> dict | None:
         """Get information about a dataset package."""
         data = await self._request("package_show", {"id": package_id})
         if not data or not data.get("success"):
             return None
         return data.get("result")
-    
+
     async def get_embedded_capacity_register(self, limit: int = 100) -> list[dict]:
         """Get embedded capacity register data."""
         pkg = await self.get_package_info(NATIONAL_GRID_DATASETS["embedded_capacity_register"])
         if not pkg or not pkg.get("resources"):
             return []
-        
+
         # Get the latest resource
         resources = pkg.get("resources", [])
         if not resources:
             return []
-        
+
         latest_resource = resources[-1]
         resource_id = latest_resource.get("id")
-        
+
         params = {
             "resource_id": resource_id,
             "limit": limit,
@@ -1151,20 +1218,20 @@ class NationalGridClient:
         if not data or not data.get("success"):
             return []
         return data.get("result", {}).get("records", [])
-    
+
     async def get_primary_substations(self, limit: int = 100) -> list[Substation]:
         """Get primary substation locations."""
         pkg = await self.get_package_info(NATIONAL_GRID_DATASETS["primary_substations"])
         if not pkg or not pkg.get("resources"):
             return []
-        
+
         resources = pkg.get("resources", [])
         if not resources:
             return []
-        
+
         latest_resource = resources[-1]
         resource_id = latest_resource.get("id")
-        
+
         params = {
             "resource_id": resource_id,
             "limit": limit,
@@ -1172,7 +1239,7 @@ class NationalGridClient:
         data = await self._request("datastore_search", params)
         if not data or not data.get("success"):
             return []
-        
+
         substations: list[Substation] = []
         for record in data.get("result", {}).get("records", []):
             try:
@@ -1180,11 +1247,11 @@ class NationalGridClient:
                 # For accurate conversion, use pyproj or similar
                 easting = float(record.get("Easting", 0))
                 northing = float(record.get("Northing", 0))
-                
+
                 # Rough approximation for UK (OSGB36 to WGS84)
                 lat = 49.0 + (northing / 111000)
                 lon = -8.0 + (easting / 80000)
-                
+
                 substations.append(Substation(
                     id=str(record.get("_id", "")),
                     name=record.get("Name", "Unknown"),
@@ -1195,13 +1262,13 @@ class NationalGridClient:
             except Exception as e:
                 _LOGGER.debug("Error parsing NG substation: %s", e)
                 continue
-        
+
         return substations
 
 
 class SSENNerdaClient:
     """Client for SSEN NERDA API."""
-    
+
     def __init__(
         self,
         session: aiohttp.ClientSession,
@@ -1211,14 +1278,14 @@ class SSENNerdaClient:
         self.session = session
         self.base_url = SSEN_NERDA_API_BASE
         self.api_key = api_key
-    
+
     async def _request(self, endpoint: str, params: dict | None = None) -> dict | None:
         """Make a request to the SSEN NERDA API."""
         url = f"{self.base_url}/{endpoint}"
         headers = {}
         if self.api_key:
             headers["x-api-key"] = self.api_key
-        
+
         try:
             async with self.session.get(url, params=params, headers=headers) as response:
                 if response.status == 200:
@@ -1228,11 +1295,11 @@ class SSENNerdaClient:
         except Exception as e:
             _LOGGER.error("SSEN NERDA API request failed: %s", e)
             return None
-    
+
     async def get_network_data(self) -> dict | None:
         """Get network data from NERDA."""
         return await self._request("network")
-    
+
     async def get_assets(self, asset_type: str | None = None) -> list[dict]:
         """Get asset data."""
         params = {}
@@ -1244,7 +1311,7 @@ class SSENNerdaClient:
 
 class EnergyDashboardClient:
     """Client for energydashboard.co.uk API."""
-    
+
     def __init__(
         self,
         session: aiohttp.ClientSession,
@@ -1254,14 +1321,14 @@ class EnergyDashboardClient:
         self.session = session
         self.base_url = ENERGY_DASHBOARD_API_BASE
         self.api_key = api_key
-    
+
     async def _request(self, endpoint: str, params: dict | None = None) -> dict | None:
         """Make a request to the Energy Dashboard API."""
         url = f"{self.base_url}/{endpoint}"
         headers = {}
         if self.api_key:
             headers["x-api-key"] = self.api_key
-        
+
         try:
             async with self.session.get(url, params=params, headers=headers) as response:
                 if response.status == 200:
@@ -1271,15 +1338,15 @@ class EnergyDashboardClient:
         except Exception as e:
             _LOGGER.error("Energy Dashboard API request failed: %s", e)
             return None
-    
+
     async def get_generation_latest(self) -> dict | None:
         """Get latest generation data."""
         return await self._request("generation/latest")
-    
+
     async def get_carbon_intensity_latest(self) -> dict | None:
         """Get latest carbon intensity."""
         return await self._request("carbon-intensity/latest")
-    
+
     async def get_demand_latest(self) -> dict | None:
         """Get latest demand data."""
         return await self._request("demand/latest")
@@ -1296,12 +1363,12 @@ class ElexonBMRSClient:
     - National demand
     - Balancing mechanism data
     """
-    
+
     def __init__(self, session: aiohttp.ClientSession) -> None:
         """Initialize the client."""
         self.session = session
         self.base_url = ELEXON_API_BASE
-    
+
     async def _request(
         self,
         endpoint: str,
@@ -1309,7 +1376,7 @@ class ElexonBMRSClient:
     ) -> dict | list | None:
         """Make a request to the Elexon BMRS API."""
         url = f"{self.base_url}{endpoint}"
-        
+
         try:
             async with self.session.get(url, params=params) as response:
                 if response.status == 200:
@@ -1319,13 +1386,13 @@ class ElexonBMRSClient:
         except Exception as e:
             _LOGGER.error("Elexon API request failed: %s", e)
             return None
-    
+
     async def get_all_bm_units(self) -> list[BMUnit]:
         """Get all Balancing Mechanism Units (power stations, interconnectors, etc.)."""
         data = await self._request("/reference/bmunits/all")
         if not data or not isinstance(data, list):
             return []
-        
+
         units = []
         for item in data:
             units.append(BMUnit(
@@ -1336,7 +1403,7 @@ class ElexonBMRSClient:
                 registered_capacity_mw=item.get("registeredCapacity"),
             ))
         return units
-    
+
     async def get_generation_by_unit(
         self,
         settlement_date: str | None = None,
@@ -1351,12 +1418,12 @@ class ElexonBMRSClient:
             params["settlementDate"] = settlement_date
         if settlement_period:
             params["settlementPeriod"] = settlement_period
-        
+
         # Use the streaming endpoint for latest data
         data = await self._request("/datasets/B1610", params)
         if not data or "data" not in data:
             return []
-        
+
         units = []
         for item in data.get("data", []):
             try:
@@ -1372,9 +1439,9 @@ class ElexonBMRSClient:
                 ))
             except (ValueError, TypeError) as e:
                 _LOGGER.debug("Error parsing generation unit: %s", e)
-        
+
         return units
-    
+
     async def get_generation_by_fuel_type(self) -> list[FuelTypeGeneration]:
         """Get instantaneous generation outturn by fuel type (FUELINST).
         
@@ -1383,19 +1450,19 @@ class ElexonBMRSClient:
         data = await self._request("/generation/outturn/current")
         if not data:
             return []
-        
+
         generation = []
         now = datetime.now()
-        
+
         # Handle the response structure
         gen_data = data if isinstance(data, list) else data.get("data", [])
-        
+
         for item in gen_data:
             try:
                 fuel = item.get("fuelType", item.get("fuel", "UNKNOWN"))
                 output = float(item.get("currentMW", item.get("generation", 0)))
                 pct = item.get("currentPercentage", item.get("percentage"))
-                
+
                 generation.append(FuelTypeGeneration(
                     fuel_type=fuel,
                     output_mw=output,
@@ -1404,9 +1471,9 @@ class ElexonBMRSClient:
                 ))
             except (ValueError, TypeError) as e:
                 _LOGGER.debug("Error parsing fuel generation: %s", e)
-        
+
         return generation
-    
+
     async def get_interconnector_flows(self) -> list[InterconnectorFlow]:
         """Get real-time interconnector power flows.
         
@@ -1416,18 +1483,18 @@ class ElexonBMRSClient:
         data = await self._request("/generation/outturn/interconnectors")
         if not data or "data" not in data:
             return []
-        
+
         flows = []
         now = datetime.now()
-        
+
         for item in data.get("data", []):
             try:
                 ic_id = item.get("interconnectorId", item.get("fuelType", ""))
                 ic_info = UK_INTERCONNECTORS.get(ic_id, {})
-                
+
                 flow_mw = float(item.get("generation", item.get("flow", 0)))
                 capacity = ic_info.get("capacity_mw", 1000)
-                
+
                 flows.append(InterconnectorFlow(
                     interconnector_id=ic_id,
                     name=ic_info.get("name", ic_id),
@@ -1439,19 +1506,19 @@ class ElexonBMRSClient:
                 ))
             except (ValueError, TypeError) as e:
                 _LOGGER.debug("Error parsing interconnector flow: %s", e)
-        
+
         return flows
-    
+
     async def get_system_frequency(self) -> SystemFrequency | None:
         """Get real-time system frequency (target 50Hz)."""
         data = await self._request("/system/frequency")
         if not data or "data" not in data:
             return None
-        
+
         items = data.get("data", [])
         if not items:
             return None
-        
+
         latest = items[0]  # Most recent
         try:
             return SystemFrequency(
@@ -1462,17 +1529,17 @@ class ElexonBMRSClient:
             )
         except (ValueError, TypeError):
             return None
-    
+
     async def get_demand_outturn(self) -> DemandData | None:
         """Get Initial National Demand Outturn (INDO)."""
         data = await self._request("/demand/outturn")
         if not data or "data" not in data:
             return None
-        
+
         items = data.get("data", [])
         if not items:
             return None
-        
+
         latest = items[0]
         try:
             return DemandData(
@@ -1485,24 +1552,24 @@ class ElexonBMRSClient:
             )
         except (ValueError, TypeError):
             return None
-    
+
     async def get_demand_summary(self) -> dict:
         """Get demand summary including current demand and peak."""
         data = await self._request("/demand/outturn/summary")
         if not data:
             return {}
         return data
-    
+
     async def get_all_fuel_types(self) -> list[dict]:
         """Get reference data for all fuel types."""
         data = await self._request("/reference/fueltypes/all")
         return data if isinstance(data, list) else []
-    
+
     async def get_all_interconnectors(self) -> list[dict]:
         """Get reference data for all interconnectors."""
         data = await self._request("/reference/interconnectors/all")
         return data if isinstance(data, list) else []
-    
+
     async def get_physical_notifications(
         self,
         bm_unit_id: str | None = None,
@@ -1514,12 +1581,12 @@ class ElexonBMRSClient:
         params = {}
         if bm_unit_id:
             params["bmUnit"] = bm_unit_id
-        
+
         data = await self._request("/balancing/physical/all", params)
         if not data or "data" not in data:
             return []
         return data.get("data", [])
-    
+
     async def get_circuit_flows(self) -> list[CircuitFlow]:
         """Get aggregated view of all metered circuits.
         
@@ -1533,10 +1600,10 @@ class ElexonBMRSClient:
             self.get_demand_outturn(),
             return_exceptions=True,
         )
-        
+
         flows = []
         now = datetime.now()
-        
+
         # Add generation by fuel type
         if isinstance(results[0], list):
             for gen in results[0]:
@@ -1550,7 +1617,7 @@ class ElexonBMRSClient:
                     fuel_type=gen.fuel_type,
                     timestamp=now,
                 ))
-        
+
         # Add interconnector flows
         if isinstance(results[1], list):
             for ic in results[1]:
@@ -1565,7 +1632,7 @@ class ElexonBMRSClient:
                     fuel_type="interconnector",
                     timestamp=now,
                 ))
-        
+
         # Add demand
         if isinstance(results[2], DemandData):
             flows.append(CircuitFlow(
@@ -1578,9 +1645,9 @@ class ElexonBMRSClient:
                 fuel_type=None,
                 timestamp=now,
             ))
-        
+
         return flows
-    
+
     async def get_grid_summary(self) -> dict[str, Any]:
         """Get comprehensive grid summary with all metered data.
         
@@ -1598,7 +1665,7 @@ class ElexonBMRSClient:
             self.get_system_frequency(),
             return_exceptions=True,
         )
-        
+
         summary = {
             "timestamp": datetime.now().isoformat(),
             "generation": {},
@@ -1610,7 +1677,7 @@ class ElexonBMRSClient:
             "total_export_mw": 0,
             "net_import_mw": 0,
         }
-        
+
         # Process generation
         if isinstance(results[0], list):
             for gen in results[0]:
@@ -1619,7 +1686,7 @@ class ElexonBMRSClient:
                     "percentage": gen.percentage,
                 }
                 summary["total_generation_mw"] += gen.output_mw
-        
+
         # Process interconnectors
         if isinstance(results[1], list):
             for ic in results[1]:
@@ -1635,17 +1702,17 @@ class ElexonBMRSClient:
                     summary["total_import_mw"] += ic.flow_mw
                 else:
                     summary["total_export_mw"] += abs(ic.flow_mw)
-        
+
         summary["net_import_mw"] = summary["total_import_mw"] - summary["total_export_mw"]
-        
+
         # Process demand
         if isinstance(results[2], DemandData):
             summary["demand_mw"] = results[2].demand_mw
-        
+
         # Process frequency
         if isinstance(results[3], SystemFrequency):
             summary["frequency_hz"] = results[3].frequency_hz
-        
+
         return summary
 
 
@@ -1660,10 +1727,10 @@ class ElectricityMapsClient:
     Free tier: 30 requests/hour
     Provides: Carbon intensity, power breakdown, zone data for 200+ zones
     """
-    
+
     def __init__(
-        self, 
-        session: aiohttp.ClientSession, 
+        self,
+        session: aiohttp.ClientSession,
         api_key: str,
     ) -> None:
         """Initialize the Electricity Maps client.
@@ -1675,10 +1742,10 @@ class ElectricityMapsClient:
         self.session = session
         self.api_key = api_key
         self.base_url = ELECTRICITY_MAPS_API_BASE
-    
+
     async def _request(
-        self, 
-        endpoint: str, 
+        self,
+        endpoint: str,
         params: dict[str, Any] | None = None,
     ) -> dict | None:
         """Make an authenticated request to the API."""
@@ -1686,7 +1753,7 @@ class ElectricityMapsClient:
         headers = {
             "auth-token": self.api_key,
         }
-        
+
         try:
             async with self.session.get(url, headers=headers, params=params) as response:
                 if response.status == 200:
@@ -1701,7 +1768,7 @@ class ElectricityMapsClient:
         except Exception as e:
             _LOGGER.error("Electricity Maps API request failed: %s", e)
             return None
-    
+
     async def get_carbon_intensity(self, zone: str) -> ZoneCarbonIntensity | None:
         """Get current carbon intensity for a zone.
         
@@ -1714,10 +1781,10 @@ class ElectricityMapsClient:
         data = await self._request("/carbon-intensity/latest", {"zone": zone})
         if not data:
             return None
-        
+
         try:
             zone_info = ELECTRICITY_MAPS_ZONES.get(zone, {"name": zone, "country": ""})
-            
+
             return ZoneCarbonIntensity(
                 zone=zone,
                 zone_name=zone_info.get("name", zone),
@@ -1733,7 +1800,7 @@ class ElectricityMapsClient:
         except Exception as e:
             _LOGGER.error("Error parsing Electricity Maps carbon data: %s", e)
             return None
-    
+
     async def get_power_breakdown(self, zone: str) -> ZonePowerBreakdown | None:
         """Get current power breakdown for a zone.
         
@@ -1746,17 +1813,17 @@ class ElectricityMapsClient:
         data = await self._request("/power-breakdown/latest", {"zone": zone})
         if not data:
             return None
-        
+
         try:
             zone_info = ELECTRICITY_MAPS_ZONES.get(zone, {"name": zone, "country": ""})
-            
+
             # Extract power production by source
             production = data.get("powerProductionBreakdown", {})
             generation_by_source = {}
             for fuel, value in production.items():
                 if value is not None and value > 0:
                     generation_by_source[fuel] = value
-            
+
             return ZonePowerBreakdown(
                 zone=zone,
                 zone_name=zone_info.get("name", zone),
@@ -1773,10 +1840,10 @@ class ElectricityMapsClient:
         except Exception as e:
             _LOGGER.error("Error parsing Electricity Maps power data: %s", e)
             return None
-    
+
     async def get_zone_history(
-        self, 
-        zone: str, 
+        self,
+        zone: str,
         hours: int = 24,
     ) -> list[ZoneCarbonIntensity]:
         """Get historical carbon intensity for a zone.
@@ -1791,10 +1858,10 @@ class ElectricityMapsClient:
         data = await self._request("/carbon-intensity/history", {"zone": zone})
         if not data or "history" not in data:
             return []
-        
+
         results = []
         zone_info = ELECTRICITY_MAPS_ZONES.get(zone, {"name": zone, "country": ""})
-        
+
         for entry in data.get("history", [])[:hours]:
             try:
                 results.append(ZoneCarbonIntensity(
@@ -1811,9 +1878,9 @@ class ElectricityMapsClient:
                 ))
             except Exception:
                 continue
-        
+
         return results
-    
+
     async def get_zones(self) -> list[str]:
         """Get list of available zones.
         
@@ -1823,7 +1890,7 @@ class ElectricityMapsClient:
         data = await self._request("/zones")
         if not data:
             return list(ELECTRICITY_MAPS_ZONES.keys())
-        
+
         return list(data.keys())
 
 
@@ -1834,10 +1901,10 @@ class EIAClient:
     Free API with key, no rate limits mentioned
     Provides: US electricity generation, consumption, prices, fuel mix
     """
-    
+
     def __init__(
-        self, 
-        session: aiohttp.ClientSession, 
+        self,
+        session: aiohttp.ClientSession,
         api_key: str,
     ) -> None:
         """Initialize the EIA client.
@@ -1849,10 +1916,10 @@ class EIAClient:
         self.session = session
         self.api_key = api_key
         self.base_url = EIA_API_BASE
-    
+
     async def _request(
-        self, 
-        route: str, 
+        self,
+        route: str,
         params: dict[str, Any] | None = None,
     ) -> dict | None:
         """Make a request to the EIA API."""
@@ -1860,7 +1927,7 @@ class EIAClient:
         request_params = {"api_key": self.api_key}
         if params:
             request_params.update(params)
-        
+
         try:
             async with self.session.get(url, params=request_params) as response:
                 if response.status == 200:
@@ -1873,9 +1940,9 @@ class EIAClient:
         except Exception as e:
             _LOGGER.error("EIA API request failed: %s", e)
             return None
-    
+
     async def get_hourly_grid_monitor(
-        self, 
+        self,
         region: str = "US48",
     ) -> ZonePowerBreakdown | None:
         """Get hourly grid monitor data for a region.
@@ -1894,24 +1961,24 @@ class EIAClient:
             "sort[0][direction]": "desc",
             "length": "24",
         }
-        
+
         if region != "US48":
             params["facets[respondent][]"] = region
-        
+
         data = await self._request("electricity/rto/fuel-type-data/data", params)
         if not data or "response" not in data:
             return None
-        
+
         try:
             rows = data.get("response", {}).get("data", [])
             if not rows:
                 return None
-            
+
             # Aggregate by fuel type (latest hour)
             generation_by_source = {}
             latest_period = rows[0].get("period") if rows else None
             total_gen = 0
-            
+
             for row in rows:
                 if row.get("period") != latest_period:
                     break
@@ -1919,9 +1986,9 @@ class EIAClient:
                 value = float(row.get("value", 0))
                 generation_by_source[fuel] = value
                 total_gen += value
-            
+
             region_info = EIA_REGIONS.get(region, {"name": region, "type": "region"})
-            
+
             return ZonePowerBreakdown(
                 zone=region,
                 zone_name=region_info.get("name", region),
@@ -1936,7 +2003,7 @@ class EIAClient:
         except Exception as e:
             _LOGGER.error("Error parsing EIA data: %s", e)
             return None
-    
+
     async def get_demand(self, region: str = "US48") -> float | None:
         """Get current demand for a region.
         
@@ -1953,14 +2020,14 @@ class EIAClient:
             "sort[0][direction]": "desc",
             "length": "1",
         }
-        
+
         if region != "US48":
             params["facets[respondent][]"] = region
-        
+
         data = await self._request("electricity/rto/demand/data", params)
         if not data or "response" not in data:
             return None
-        
+
         try:
             rows = data.get("response", {}).get("data", [])
             if rows:
@@ -1978,10 +2045,10 @@ class ENTSOEClient:
     Free registration required for security token
     Provides: European grid data - generation, load, cross-border flows
     """
-    
+
     def __init__(
-        self, 
-        session: aiohttp.ClientSession, 
+        self,
+        session: aiohttp.ClientSession,
         security_token: str,
     ) -> None:
         """Initialize the ENTSO-E client.
@@ -1993,11 +2060,11 @@ class ENTSOEClient:
         self.session = session
         self.security_token = security_token
         self.base_url = ENTSOE_API_BASE
-    
+
     async def _request(self, params: dict[str, Any]) -> str | None:
         """Make a request to the ENTSO-E API (returns XML)."""
         params["securityToken"] = self.security_token
-        
+
         try:
             async with self.session.get(self.base_url, params=params) as response:
                 if response.status == 200:
@@ -2010,23 +2077,23 @@ class ENTSOEClient:
         except Exception as e:
             _LOGGER.error("ENTSO-E API request failed: %s", e)
             return None
-    
+
     def _parse_xml_timeseries(self, xml_text: str) -> list[dict[str, Any]]:
         """Parse ENTSO-E XML response for time series data."""
         results = []
         try:
             ns = {"ns": "urn:iec62325.351:tc57wg16:451-6:generationloaddocument:3:0"}
-            root = ElementTree.fromstring(xml_text)
-            
+            root = ET.fromstring(xml_text)
+
             for ts in root.findall(".//ns:TimeSeries", ns):
                 mrid = ts.find("ns:mRID", ns)
                 psr_type = ts.find(".//ns:psrType", ns)
-                
+
                 for period in ts.findall(".//ns:Period", ns):
                     for point in period.findall(".//ns:Point", ns):
                         position = point.find("ns:position", ns)
                         quantity = point.find("ns:quantity", ns)
-                        
+
                         if quantity is not None:
                             results.append({
                                 "mrid": mrid.text if mrid is not None else None,
@@ -2036,11 +2103,11 @@ class ENTSOEClient:
                             })
         except Exception as e:
             _LOGGER.error("Error parsing ENTSO-E XML: %s", e)
-        
+
         return results
-    
+
     async def get_generation_per_type(
-        self, 
+        self,
         area_code: str,
         hours_back: int = 1,
     ) -> ZonePowerBreakdown | None:
@@ -2056,7 +2123,7 @@ class ENTSOEClient:
         now = datetime.utcnow()
         start = (now - timedelta(hours=hours_back)).strftime("%Y%m%d%H00")
         end = now.strftime("%Y%m%d%H00")
-        
+
         params = {
             "documentType": "A75",  # Actual generation per type
             "processType": "A16",  # Realised
@@ -2064,14 +2131,14 @@ class ENTSOEClient:
             "periodStart": start,
             "periodEnd": end,
         }
-        
+
         xml_data = await self._request(params)
         if not xml_data:
             return None
-        
+
         try:
             results = self._parse_xml_timeseries(xml_data)
-            
+
             # Map ENTSO-E PSR types to fuel names
             psr_type_map = {
                 "B01": "biomass", "B02": "brown_coal", "B03": "coal_gas",
@@ -2081,7 +2148,7 @@ class ENTSOEClient:
                 "B15": "other_renewable", "B16": "solar", "B17": "waste",
                 "B18": "wind_offshore", "B19": "wind_onshore", "B20": "other",
             }
-            
+
             generation_by_source = {}
             total = 0
             for entry in results:
@@ -2093,9 +2160,9 @@ class ENTSOEClient:
                 else:
                     generation_by_source[fuel] = val
                 total += val
-            
+
             area_info = ENTSOE_AREAS.get(area_code, {"name": area_code, "country": ""})
-            
+
             return ZonePowerBreakdown(
                 zone=area_code,
                 zone_name=area_info.get("name", area_code),
@@ -2110,9 +2177,9 @@ class ENTSOEClient:
         except Exception as e:
             _LOGGER.error("Error parsing ENTSO-E generation: %s", e)
             return None
-    
+
     async def get_total_load(
-        self, 
+        self,
         area_code: str,
         hours_back: int = 1,
     ) -> float | None:
@@ -2128,7 +2195,7 @@ class ENTSOEClient:
         now = datetime.utcnow()
         start = (now - timedelta(hours=hours_back)).strftime("%Y%m%d%H00")
         end = now.strftime("%Y%m%d%H00")
-        
+
         params = {
             "documentType": "A65",  # System total load
             "processType": "A16",  # Realised
@@ -2136,11 +2203,11 @@ class ENTSOEClient:
             "periodStart": start,
             "periodEnd": end,
         }
-        
+
         xml_data = await self._request(params)
         if not xml_data:
             return None
-        
+
         try:
             results = self._parse_xml_timeseries(xml_data)
             if results:
@@ -2159,20 +2226,20 @@ class OpenElectricityClient:
     Free API, no key required
     Provides: Australia NEM/WEM generation, demand, emissions
     """
-    
+
     def __init__(self, session: aiohttp.ClientSession) -> None:
         """Initialize the OpenElectricity client."""
         self.session = session
         self.base_url = OPENELECTRICITY_API_BASE
-    
+
     async def _request(
-        self, 
-        endpoint: str, 
+        self,
+        endpoint: str,
         params: dict[str, Any] | None = None,
     ) -> dict | None:
         """Make a request to the OpenElectricity API."""
         url = f"{self.base_url}{endpoint}"
-        
+
         try:
             async with self.session.get(url, params=params) as response:
                 if response.status == 200:
@@ -2183,9 +2250,9 @@ class OpenElectricityClient:
         except Exception as e:
             _LOGGER.error("OpenElectricity API request failed: %s", e)
             return None
-    
+
     async def get_network_data(
-        self, 
+        self,
         network: str = "NEM",
         region: str | None = None,
     ) -> ZonePowerBreakdown | None:
@@ -2201,11 +2268,11 @@ class OpenElectricityClient:
         endpoint = f"/stats/{network.lower()}"
         if region:
             endpoint += f"/{region}"
-        
+
         data = await self._request(endpoint)
         if not data:
             return None
-        
+
         try:
             generation_by_source = {}
             for fuel_data in data.get("fueltech", []):
@@ -2213,10 +2280,10 @@ class OpenElectricityClient:
                 output = fuel_data.get("generation", 0) or 0
                 if output > 0:
                     generation_by_source[fuel] = output
-            
+
             zone_name = region if region else network
             region_info = AUSTRALIA_REGIONS.get(zone_name, {"name": zone_name, "network": network})
-            
+
             return ZonePowerBreakdown(
                 zone=zone_name,
                 zone_name=region_info.get("name", zone_name),
@@ -2233,9 +2300,9 @@ class OpenElectricityClient:
         except Exception as e:
             _LOGGER.error("Error parsing OpenElectricity data: %s", e)
             return None
-    
+
     async def get_carbon_intensity(
-        self, 
+        self,
         network: str = "NEM",
     ) -> ZoneCarbonIntensity | None:
         """Get carbon intensity for a network.
@@ -2249,7 +2316,7 @@ class OpenElectricityClient:
         data = await self._request(f"/stats/{network.lower()}/emissions")
         if not data:
             return None
-        
+
         try:
             return ZoneCarbonIntensity(
                 zone=network,
@@ -2275,15 +2342,15 @@ class REEEsiosClient:
     Free API, no authentication required for basic data
     Provides: Spain generation, demand, prices, emissions
     """
-    
+
     def __init__(self, session: aiohttp.ClientSession) -> None:
         """Initialize the REE Esios client."""
         self.session = session
         self.base_url = REE_ESIOS_API_BASE
-    
+
     async def _request(
-        self, 
-        endpoint: str, 
+        self,
+        endpoint: str,
         params: dict[str, Any] | None = None,
     ) -> dict | None:
         """Make a request to the REE Esios API."""
@@ -2291,7 +2358,7 @@ class REEEsiosClient:
         headers = {
             "Accept": "application/json; application/vnd.esios-api-v1+json",
         }
-        
+
         try:
             async with self.session.get(url, headers=headers, params=params) as response:
                 if response.status == 200:
@@ -2302,7 +2369,7 @@ class REEEsiosClient:
         except Exception as e:
             _LOGGER.error("REE Esios API request failed: %s", e)
             return None
-    
+
     async def get_generation_structure(self) -> ZonePowerBreakdown | None:
         """Get current generation structure for Spain.
         
@@ -2314,16 +2381,16 @@ class REEEsiosClient:
         data = await self._request("/indicators/1293")
         if not data or "indicator" not in data:
             return None
-        
+
         try:
             indicator = data.get("indicator", {})
             values = indicator.get("values", [])
-            
+
             if not values:
                 return None
-            
+
             latest = values[0]
-            
+
             return ZonePowerBreakdown(
                 zone="ES",
                 zone_name="Spain - Peninsular",
@@ -2340,7 +2407,7 @@ class REEEsiosClient:
         except Exception as e:
             _LOGGER.error("Error parsing REE Esios data: %s", e)
             return None
-    
+
     async def get_carbon_free_percentage(self) -> float | None:
         """Get current CO2-free generation percentage.
         
@@ -2351,7 +2418,7 @@ class REEEsiosClient:
         data = await self._request("/indicators/541")
         if not data or "indicator" not in data:
             return None
-        
+
         try:
             values = data.get("indicator", {}).get("values", [])
             if values:
@@ -2369,10 +2436,10 @@ class RTEClient:
     OAuth2 authentication required (free registration)
     Provides: France generation, consumption, cross-border flows
     """
-    
+
     def __init__(
-        self, 
-        session: aiohttp.ClientSession, 
+        self,
+        session: aiohttp.ClientSession,
         client_id: str,
         client_secret: str,
     ) -> None:
@@ -2389,22 +2456,22 @@ class RTEClient:
         self.base_url = RTE_API_BASE
         self._access_token: str | None = None
         self._token_expires: datetime | None = None
-    
+
     async def _get_token(self) -> str | None:
         """Get or refresh OAuth2 access token."""
         if self._access_token and self._token_expires and datetime.now() < self._token_expires:
             return self._access_token
-        
+
         auth_url = f"{self.base_url}/token/oauth/"
         credentials = base64.b64encode(
             f"{self.client_id}:{self.client_secret}".encode()
         ).decode()
-        
+
         headers = {
             "Authorization": f"Basic {credentials}",
             "Content-Type": "application/x-www-form-urlencoded",
         }
-        
+
         try:
             async with self.session.post(auth_url, headers=headers) as response:
                 if response.status == 200:
@@ -2419,23 +2486,23 @@ class RTEClient:
         except Exception as e:
             _LOGGER.error("RTE OAuth request failed: %s", e)
             return None
-    
+
     async def _request(
-        self, 
+        self,
         api_name: str,
-        endpoint: str, 
+        endpoint: str,
         params: dict[str, Any] | None = None,
     ) -> dict | None:
         """Make an authenticated request to the RTE API."""
         token = await self._get_token()
         if not token:
             return None
-        
+
         url = f"{self.base_url}/open_api/{api_name}/{endpoint}"
         headers = {
             "Authorization": f"Bearer {token}",
         }
-        
+
         try:
             async with self.session.get(url, headers=headers, params=params) as response:
                 if response.status == 200:
@@ -2446,7 +2513,7 @@ class RTEClient:
         except Exception as e:
             _LOGGER.error("RTE API request failed: %s", e)
             return None
-    
+
     async def get_actual_generation(self) -> ZonePowerBreakdown | None:
         """Get actual generation by fuel type for France.
         
@@ -2456,11 +2523,11 @@ class RTEClient:
         data = await self._request("actual_generation", "v1/actual_generations_per_production_type")
         if not data:
             return None
-        
+
         try:
             generation_by_source = {}
             total = 0
-            
+
             for entry in data.get("actual_generations_per_production_type", []):
                 fuel = entry.get("production_type", "unknown")
                 values = entry.get("values", [])
@@ -2468,7 +2535,7 @@ class RTEClient:
                     latest = values[-1].get("value", 0)
                     generation_by_source[fuel] = latest
                     total += latest
-            
+
             return ZonePowerBreakdown(
                 zone="FR",
                 zone_name="France",
@@ -2483,7 +2550,7 @@ class RTEClient:
         except Exception as e:
             _LOGGER.error("Error parsing RTE generation: %s", e)
             return None
-    
+
     async def get_consumption(self) -> float | None:
         """Get current consumption for France.
         
@@ -2493,7 +2560,7 @@ class RTEClient:
         data = await self._request("consumption", "v1/short_term")
         if not data:
             return None
-        
+
         try:
             values = data.get("short_term", [{}])[0].get("values", [])
             if values:
@@ -2512,7 +2579,7 @@ class RTEClient:
 @dataclass
 class GridFrequency:
     """Grid frequency data."""
-    
+
     frequency_hz: float
     timestamp: datetime
     target_hz: float = 50.0  # Most grids target 50Hz (60Hz in Americas)
@@ -2524,7 +2591,7 @@ class GridFrequency:
 @dataclass
 class DayAheadPrice:
     """Day-ahead electricity price data."""
-    
+
     price: float
     currency: str
     price_area: str
@@ -2536,7 +2603,7 @@ class DayAheadPrice:
 @dataclass
 class ImbalanceData:
     """Grid imbalance data."""
-    
+
     system_imbalance_mw: float
     imbalance_price: float
     currency: str
@@ -2558,7 +2625,7 @@ class FingridClient:
     
     Provides: Production, consumption, wind/solar, frequency, cross-border flows.
     """
-    
+
     def __init__(self, session: aiohttp.ClientSession, api_key: str):
         """Initialize the client.
         
@@ -2569,7 +2636,7 @@ class FingridClient:
         self._session = session
         self._api_key = api_key
         self._base_url = "https://api.fingrid.fi/v1"
-    
+
     async def _request(self, dataset_id: int, start_time: str | None = None) -> list[dict] | None:
         """Make API request to Fingrid.
         
@@ -2582,7 +2649,7 @@ class FingridClient:
         params = {}
         if start_time:
             params["start_time"] = start_time
-        
+
         try:
             async with self._session.get(url, headers=headers, params=params) as resp:
                 if resp.status == 200:
@@ -2592,42 +2659,42 @@ class FingridClient:
         except Exception as e:
             _LOGGER.error("Fingrid API error: %s", e)
             return None
-    
+
     async def get_electricity_production(self) -> float | None:
         """Get total electricity production in Finland (MW)."""
         data = await self._request(74)  # Dataset ID for electricity production
         if data and len(data) > 0:
             return data[-1].get("value")
         return None
-    
+
     async def get_electricity_consumption(self) -> float | None:
         """Get total electricity consumption in Finland (MW)."""
         data = await self._request(124)
         if data and len(data) > 0:
             return data[-1].get("value")
         return None
-    
+
     async def get_wind_power(self) -> float | None:
         """Get wind power production in Finland (MW)."""
         data = await self._request(75)
         if data and len(data) > 0:
             return data[-1].get("value")
         return None
-    
+
     async def get_solar_power(self) -> float | None:
         """Get solar power production in Finland (MW)."""
         data = await self._request(248)
         if data and len(data) > 0:
             return data[-1].get("value")
         return None
-    
+
     async def get_nuclear_power(self) -> float | None:
         """Get nuclear power production in Finland (MW)."""
         data = await self._request(188)
         if data and len(data) > 0:
             return data[-1].get("value")
         return None
-    
+
     async def get_frequency(self) -> GridFrequency | None:
         """Get current grid frequency in Finland."""
         data = await self._request(177)
@@ -2645,7 +2712,7 @@ class FingridClient:
                 data_source="Fingrid",
             )
         return None
-    
+
     async def get_power_breakdown(self) -> ZonePowerBreakdown | None:
         """Get comprehensive power breakdown for Finland."""
         # Fetch all data in parallel
@@ -2658,7 +2725,7 @@ class FingridClient:
             self._request(191),  # Hydro
             return_exceptions=True,
         )
-        
+
         production = results[0] if not isinstance(results[0], Exception) else None
         consumption = results[1] if not isinstance(results[1], Exception) else None
         wind = results[2] if not isinstance(results[2], Exception) else None
@@ -2666,7 +2733,7 @@ class FingridClient:
         nuclear = results[4] if not isinstance(results[4], Exception) else None
         hydro_data = results[5] if not isinstance(results[5], Exception) else None
         hydro = hydro_data[-1].get("value") if hydro_data and len(hydro_data) > 0 else None
-        
+
         generation_by_source = {}
         if wind:
             generation_by_source["wind"] = wind
@@ -2676,11 +2743,11 @@ class FingridClient:
             generation_by_source["nuclear"] = nuclear
         if hydro:
             generation_by_source["hydro"] = hydro
-        
+
         # Calculate renewable percentage
         renewable_mw = (wind or 0) + (solar or 0) + (hydro or 0)
         renewable_pct = (renewable_mw / production * 100) if production and production > 0 else None
-        
+
         return ZonePowerBreakdown(
             zone="FI",
             zone_name="Finland",
@@ -2690,7 +2757,7 @@ class FingridClient:
             power_export_mw=None,
             generation_by_source=generation_by_source,
             renewable_percentage=renewable_pct,
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             data_source="Fingrid",
         )
 
@@ -2703,12 +2770,12 @@ class EnerginetClient:
     
     Provides: CO2 emissions, day-ahead prices, generation, consumption.
     """
-    
+
     def __init__(self, session: aiohttp.ClientSession):
         """Initialize the client."""
         self._session = session
         self._base_url = "https://api.energidataservice.dk"
-    
+
     async def _request(self, dataset: str, limit: int = 1, sort: str = "HourUTC DESC") -> dict | None:
         """Make API request to Energinet."""
         url = f"{self._base_url}/dataset/{dataset}"
@@ -2716,7 +2783,7 @@ class EnerginetClient:
             "limit": limit,
             "sort": sort,
         }
-        
+
         try:
             async with self._session.get(url, params=params) as resp:
                 if resp.status == 200:
@@ -2726,35 +2793,35 @@ class EnerginetClient:
         except Exception as e:
             _LOGGER.error("Energinet API error: %s", e)
             return None
-    
+
     async def get_co2_emission(self) -> ZoneCarbonIntensity | None:
         """Get current CO2 emission intensity for Denmark."""
         data = await self._request("CO2Emis", limit=2)
         if not data or not data.get("records"):
             return None
-        
+
         records = data["records"]
         if not records:
             return None
-        
+
         # Get DK1 and DK2 (West and East Denmark)
         dk1 = next((r for r in records if r.get("PriceArea") == "DK1"), None)
         dk2 = next((r for r in records if r.get("PriceArea") == "DK2"), None)
-        
+
         # Use average or available
         co2_dk1 = dk1.get("CO2Emission", 0) if dk1 else 0
         co2_dk2 = dk2.get("CO2Emission", 0) if dk2 else 0
         co2_avg = (co2_dk1 + co2_dk2) / 2 if co2_dk1 and co2_dk2 else (co2_dk1 or co2_dk2)
-        
+
         return ZoneCarbonIntensity(
             zone="DK",
             zone_name="Denmark",
             carbon_intensity=int(co2_avg),
             fossil_fuel_percentage=None,
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             data_source="Energinet",
         )
-    
+
     async def get_day_ahead_prices(self, price_area: str = "DK1") -> DayAheadPrice | None:
         """Get day-ahead electricity prices for Denmark.
         
@@ -2764,7 +2831,7 @@ class EnerginetClient:
         data = await self._request("Elspotprices", limit=24)
         if not data or not data.get("records"):
             return None
-        
+
         # Find latest for specified area
         for record in data["records"]:
             if record.get("PriceArea") == price_area:
@@ -2777,25 +2844,25 @@ class EnerginetClient:
                     data_source="Energinet",
                 )
         return None
-    
+
     async def get_production_consumption(self) -> ZonePowerBreakdown | None:
         """Get production and consumption data for Denmark."""
         data = await self._request("ProductionConsumptionSettlement", limit=10)
         if not data or not data.get("records"):
             return None
-        
+
         records = data["records"]
         # Sum up latest records for all areas
         latest_hour = records[0].get("HourUTC") if records else None
-        
+
         total_production = 0
         total_consumption = 0
         generation_by_source = {}
-        
+
         for record in records:
             if record.get("HourUTC") == latest_hour:
                 # Add generation by source
-                for key in ["OnshoreWindPower", "OffshoreWindPower", "SolarPower", 
+                for key in ["OnshoreWindPower", "OffshoreWindPower", "SolarPower",
                            "ThermalPower", "HydroPower"]:
                     val = record.get(key, 0) or 0
                     fuel = key.replace("Power", "").lower()
@@ -2804,23 +2871,23 @@ class EnerginetClient:
                     else:
                         generation_by_source[fuel] = val
                     total_production += val
-                
+
                 total_consumption += record.get("GrossConsumption", 0) or 0
-        
+
         # Combine wind types
         if "onshorewind" in generation_by_source or "offshorewind" in generation_by_source:
             generation_by_source["wind"] = (
-                generation_by_source.pop("onshorewind", 0) + 
+                generation_by_source.pop("onshorewind", 0) +
                 generation_by_source.pop("offshorewind", 0)
             )
-        
+
         renewable_mw = (
-            generation_by_source.get("wind", 0) + 
-            generation_by_source.get("solar", 0) + 
+            generation_by_source.get("wind", 0) +
+            generation_by_source.get("solar", 0) +
             generation_by_source.get("hydro", 0)
         )
         renewable_pct = (renewable_mw / total_production * 100) if total_production > 0 else None
-        
+
         return ZonePowerBreakdown(
             zone="DK",
             zone_name="Denmark",
@@ -2830,7 +2897,7 @@ class EnerginetClient:
             power_export_mw=None,
             generation_by_source=generation_by_source,
             renewable_percentage=renewable_pct,
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             data_source="Energinet",
         )
 
@@ -2856,12 +2923,12 @@ class EliaClient:
     
     Provides: Imbalance prices, system imbalance, wind/solar forecasts, load.
     """
-    
+
     def __init__(self, session: aiohttp.ClientSession):
         """Initialize the client."""
         self._session = session
         self._base_url = "https://opendata.elia.be/api/explore/v2.1"
-    
+
     async def _request(self, dataset: str, limit: int = 1, order_by: str = "datetime DESC") -> dict | None:
         """Make API request to Elia."""
         url = f"{self._base_url}/catalog/datasets/{dataset}/records"
@@ -2869,7 +2936,7 @@ class EliaClient:
             "limit": limit,
             "order_by": order_by,
         }
-        
+
         try:
             async with self._session.get(url, params=params) as resp:
                 if resp.status == 200:
@@ -2879,7 +2946,7 @@ class EliaClient:
         except Exception as e:
             _LOGGER.error("Elia API error: %s", e)
             return None
-    
+
     async def get_current_imbalance(self) -> ImbalanceData | None:
         """Get current system imbalance for Belgium.
         
@@ -2888,19 +2955,19 @@ class EliaClient:
         data = await self._request("ods169")
         if not data or not data.get("results"):
             return None
-        
+
         record = data["results"][0]
         # ods169 fields: datetime, systemimbalance, acevalue, etc.
         imbalance = record.get("systemimbalance", record.get("system_imbalance", 0))
         direction = "long" if imbalance > 0 else "short"
-        
+
         # Get timestamp - handle different field names
         timestamp_str = record.get("datetime", record.get("timestamp", ""))
         try:
             timestamp = datetime.fromisoformat(timestamp_str.replace("Z", "+00:00"))
         except (ValueError, AttributeError):
-            timestamp = datetime.now(timezone.utc)
-        
+            timestamp = datetime.now(UTC)
+
         return ImbalanceData(
             system_imbalance_mw=imbalance,
             imbalance_price=record.get("alpha", 0),
@@ -2909,7 +2976,7 @@ class EliaClient:
             direction=direction,
             data_source="Elia",
         )
-    
+
     async def get_imbalance_prices(self) -> dict | None:
         """Get current imbalance prices for Belgium.
         
@@ -2918,7 +2985,7 @@ class EliaClient:
         data = await self._request("ods162")
         if not data or not data.get("results"):
             return None
-        
+
         record = data["results"][0]
         return {
             "positive_imbalance_price": record.get("positiveimbalanceprice", record.get("pos_imb_price")),
@@ -2928,7 +2995,7 @@ class EliaClient:
             "currency": "EUR",
             "unit": "EUR/MWh",
         }
-    
+
     async def get_total_load(self) -> float | None:
         """Get total load for Belgium (MW).
         
@@ -2938,11 +3005,11 @@ class EliaClient:
         data = await self._request("ods002")
         if not data or not data.get("results"):
             return None
-        
+
         record = data["results"][0]
         # ods002 uses 'measured' for actual load value
         return record.get("measured", record.get("mostrecentforecast", record.get("totalload")))
-    
+
     async def get_solar_power(self) -> dict | None:
         """Get solar/PV power data for Belgium.
         
@@ -2952,7 +3019,7 @@ class EliaClient:
         data = await self._request("ods087", limit=48)
         if not data or not data.get("results"):
             return None
-        
+
         forecasts = []
         for record in data["results"]:
             forecasts.append({
@@ -2963,7 +3030,7 @@ class EliaClient:
                 "region": record.get("region"),
             })
         return forecasts
-    
+
     async def get_wind_power(self) -> dict | None:
         """Get wind power data for Belgium.
         
@@ -2974,7 +3041,7 @@ class EliaClient:
         data = await self._request("ods086")
         if not data or not data.get("results"):
             return None
-        
+
         record = data["results"][0]
         return {
             "realtime_mw": record.get("realtime"),
@@ -2983,7 +3050,7 @@ class EliaClient:
             "region": record.get("region"),
             "datetime": record.get("datetime"),
         }
-    
+
     async def get_power_breakdown(self) -> ZonePowerBreakdown | None:
         """Get power breakdown for Belgium."""
         results = await asyncio.gather(
@@ -2992,24 +3059,24 @@ class EliaClient:
             self._request("ods087"),  # Solar/PV
             return_exceptions=True,
         )
-        
+
         load = results[0] if not isinstance(results[0], Exception) else None
         wind_data = results[1] if not isinstance(results[1], Exception) else None
         solar_data = results[2] if not isinstance(results[2], Exception) else None
-        
+
         generation_by_source = {}
-        
+
         if wind_data and isinstance(wind_data, dict):
             wind_val = wind_data.get("realtime_mw") or wind_data.get("forecast_mw")
             if wind_val:
                 generation_by_source["wind"] = wind_val
-        
+
         if solar_data and solar_data.get("results"):
             record = solar_data["results"][0]
             solar_val = record.get("realtime") or record.get("mostrecentforecast")
             if solar_val:
                 generation_by_source["solar"] = solar_val
-        
+
         return ZonePowerBreakdown(
             zone="BE",
             zone_name="Belgium",
@@ -3018,7 +3085,7 @@ class EliaClient:
             power_import_mw=None,
             power_export_mw=None,
             generation_by_source=generation_by_source,
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             data_source="Elia",
         )
 
@@ -3031,14 +3098,14 @@ class SMARDClient:
     
     Provides: Generation by source, consumption, prices, cross-border flows.
     """
-    
+
     def __init__(self, session: aiohttp.ClientSession):
         """Initialize the client."""
         self._session = session
         self._base_url = "https://www.smard.de/app/chart_data"
-    
+
     # SMARD filter IDs for different data types
-    FILTERS = {
+    FILTERS: ClassVar[dict[str, Any]] = {
         "generation_total": 1223,
         "generation_biomass": 4066,
         "generation_hydro": 1226,
@@ -3057,27 +3124,27 @@ class SMARDClient:
         "cross_border_de_ch": 253,
         "cross_border_de_fr": 254,
     }
-    
+
     async def _request(self, filter_id: int, region: str = "DE") -> dict | None:
         """Make API request to SMARD."""
         # Get index to find latest timestamp
         index_url = f"{self._base_url}/{filter_id}/{region}/index_quarterhour.json"
-        
+
         try:
             async with self._session.get(index_url) as resp:
                 if resp.status != 200:
                     _LOGGER.warning("SMARD index returned %d", resp.status)
                     return None
                 index_data = await resp.json()
-            
+
             timestamps = index_data.get("timestamps", [])
             if not timestamps:
                 return None
-            
+
             # Get latest timestamp data
             latest_ts = timestamps[-1]
             data_url = f"{self._base_url}/{filter_id}/{region}/{filter_id}_{region}_quarterhour_{latest_ts}.json"
-            
+
             async with self._session.get(data_url) as resp:
                 if resp.status == 200:
                     return await resp.json()
@@ -3085,7 +3152,7 @@ class SMARDClient:
         except Exception as e:
             _LOGGER.error("SMARD API error: %s", e)
             return None
-    
+
     async def get_generation_mix(self) -> ZonePowerBreakdown | None:
         """Get current generation mix for Germany."""
         # Fetch all generation types in parallel
@@ -3101,18 +3168,18 @@ class SMARDClient:
             "gas": 4071,
             "pumped_storage": 4070,
         }
-        
+
         tasks = {fuel: self._request(fid) for fuel, fid in filter_ids.items()}
         results = await asyncio.gather(*tasks.values(), return_exceptions=True)
-        
+
         generation_by_source = {}
         total_production = 0
         renewable_mw = 0
-        
-        for fuel, result in zip(tasks.keys(), results):
+
+        for fuel, result in zip(tasks.keys(), results, strict=True):
             if isinstance(result, Exception) or not result:
                 continue
-            
+
             series = result.get("series", [])
             if series:
                 # Get latest non-null value
@@ -3121,21 +3188,21 @@ class SMARDClient:
                         val = entry[1]
                         generation_by_source[fuel] = val
                         total_production += val
-                        
+
                         # Track renewables
                         if fuel in ["solar", "wind_onshore", "wind_offshore", "hydro", "biomass"]:
                             renewable_mw += val
                         break
-        
+
         # Combine wind types
         if "wind_onshore" in generation_by_source or "wind_offshore" in generation_by_source:
             generation_by_source["wind"] = (
-                generation_by_source.pop("wind_onshore", 0) + 
+                generation_by_source.pop("wind_onshore", 0) +
                 generation_by_source.pop("wind_offshore", 0)
             )
-        
+
         renewable_pct = (renewable_mw / total_production * 100) if total_production > 0 else None
-        
+
         return ZonePowerBreakdown(
             zone="DE",
             zone_name="Germany",
@@ -3145,29 +3212,29 @@ class SMARDClient:
             power_export_mw=None,
             generation_by_source=generation_by_source,
             renewable_percentage=renewable_pct,
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             data_source="SMARD",
         )
-    
+
     async def get_consumption(self) -> float | None:
         """Get total consumption for Germany (MW)."""
         data = await self._request(410)
         if not data:
             return None
-        
+
         series = data.get("series", [])
         if series:
             for entry in reversed(series):
                 if entry[1] is not None:
                     return entry[1]
         return None
-    
+
     async def get_day_ahead_price(self) -> DayAheadPrice | None:
         """Get day-ahead price for Germany."""
         data = await self._request(4169)
         if not data:
             return None
-        
+
         series = data.get("series", [])
         if series:
             for entry in reversed(series):
@@ -3176,7 +3243,7 @@ class SMARDClient:
                         price=entry[1],
                         currency="EUR",
                         price_area="DE",
-                        timestamp=datetime.fromtimestamp(entry[0] / 1000, tz=timezone.utc),
+                        timestamp=datetime.fromtimestamp(entry[0] / 1000, tz=UTC),
                         unit="EUR/MWh",
                         data_source="SMARD",
                     )
@@ -3196,16 +3263,16 @@ class PSEClient:
     
     Provides: Load, generation, cross-border flows, frequency, prices.
     """
-    
+
     def __init__(self, session: aiohttp.ClientSession):
         """Initialize the client."""
         self._session = session
         self._base_url = "https://api.raporty.pse.pl/api"
-    
+
     async def _request(self, endpoint: str) -> dict | None:
         """Make API request to PSE."""
         url = f"{self._base_url}/{endpoint}"
-        
+
         try:
             async with self._session.get(url) as resp:
                 if resp.status == 200:
@@ -3215,39 +3282,39 @@ class PSEClient:
         except Exception as e:
             _LOGGER.error("PSE API error: %s", e)
             return None
-    
+
     async def get_current_data(self) -> dict | None:
         """Get current system data for Poland."""
         data = await self._request("dane-systemowe")
         if not data:
             return None
-        
+
         # Return latest entry
         if isinstance(data, list) and len(data) > 0:
             return data[-1]
         return data
-    
+
     async def get_generation(self) -> ZonePowerBreakdown | None:
         """Get current generation breakdown for Poland."""
         data = await self.get_current_data()
         if not data:
             return None
-        
+
         generation_by_source = {
             "thermal": data.get("generation_thermal", 0),
             "hydro": data.get("generation_hydro", 0),
             "wind": data.get("generation_wind", 0),
             "solar": data.get("generation_pv", 0),
         }
-        
+
         total = sum(v for v in generation_by_source.values() if v)
         renewable_mw = (
-            generation_by_source.get("hydro", 0) + 
-            generation_by_source.get("wind", 0) + 
+            generation_by_source.get("hydro", 0) +
+            generation_by_source.get("wind", 0) +
             generation_by_source.get("solar", 0)
         )
         renewable_pct = (renewable_mw / total * 100) if total > 0 else None
-        
+
         return ZonePowerBreakdown(
             zone="PL",
             zone_name="Poland",
@@ -3257,35 +3324,35 @@ class PSEClient:
             power_export_mw=data.get("export"),
             generation_by_source=generation_by_source,
             renewable_percentage=renewable_pct,
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             data_source="PSE",
         )
-    
+
     async def get_frequency(self) -> GridFrequency | None:
         """Get current grid frequency for Poland."""
         data = await self.get_current_data()
         if not data:
             return None
-        
+
         freq = data.get("frequency", 50.0)
         deviation = freq - 50.0
         status = "normal" if abs(deviation) < 0.1 else ("high" if deviation > 0 else "low")
-        
+
         return GridFrequency(
             frequency_hz=freq,
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             target_hz=50.0,
             deviation_hz=deviation,
             status=status,
             data_source="PSE",
         )
-    
+
     async def get_cross_border_flows(self) -> dict | None:
         """Get cross-border flows for Poland."""
         data = await self.get_current_data()
         if not data:
             return None
-        
+
         return {
             "germany": data.get("flow_de", 0),
             "czech_republic": data.get("flow_cz", 0),
@@ -3310,16 +3377,16 @@ class TernaClient:
     
     Provides: Demand, generation by source, RES percentage.
     """
-    
+
     def __init__(self, session: aiohttp.ClientSession):
         """Initialize the client."""
         self._session = session
         self._base_url = "https://api.terna.it/pti-api/v1"
-    
+
     async def _request(self, endpoint: str) -> dict | None:
         """Make API request to Terna."""
         url = f"{self._base_url}/{endpoint}"
-        
+
         try:
             async with self._session.get(url) as resp:
                 if resp.status == 200:
@@ -3329,36 +3396,36 @@ class TernaClient:
         except Exception as e:
             _LOGGER.error("Terna API error: %s", e)
             return None
-    
+
     async def get_real_time_demand(self) -> float | None:
         """Get real-time electricity demand for Italy (MW)."""
         data = await self._request("real-time-demand")
         if data and isinstance(data, list) and len(data) > 0:
             return data[-1].get("value")
         return None
-    
+
     async def get_generation_by_source(self) -> ZonePowerBreakdown | None:
         """Get generation by source for Italy."""
         data = await self._request("generation-by-source")
         if not data:
             return None
-        
+
         generation_by_source = {}
         total = 0
         renewable_mw = 0
-        
+
         if isinstance(data, list):
             for entry in data:
                 source = entry.get("source", "unknown").lower()
                 value = entry.get("value", 0)
                 generation_by_source[source] = value
                 total += value
-                
+
                 if source in ["hydro", "solar", "wind", "geothermal", "biomass"]:
                     renewable_mw += value
-        
+
         renewable_pct = (renewable_mw / total * 100) if total > 0 else None
-        
+
         return ZonePowerBreakdown(
             zone="IT",
             zone_name="Italy",
@@ -3368,7 +3435,7 @@ class TernaClient:
             power_export_mw=None,
             generation_by_source=generation_by_source,
             renewable_percentage=renewable_pct,
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             data_source="Terna",
         )
 
@@ -3386,16 +3453,16 @@ class IESOClient:
     
     Provides: Demand, generation by fuel type, prices.
     """
-    
+
     def __init__(self, session: aiohttp.ClientSession):
         """Initialize the client."""
         self._session = session
         self._base_url = "https://www.ieso.ca"
-    
+
     async def _request(self, report_name: str) -> str | None:
         """Make API request to IESO (returns XML)."""
         url = f"{self._base_url}/publicreports/{report_name}"
-        
+
         try:
             async with self._session.get(url) as resp:
                 if resp.status == 200:
@@ -3405,39 +3472,39 @@ class IESOClient:
         except Exception as e:
             _LOGGER.error("IESO API error: %s", e)
             return None
-    
+
     async def get_generation_output(self) -> ZonePowerBreakdown | None:
         """Get current generation output by fuel type for Ontario."""
         xml_data = await self._request("GenOutputCapability.xml")
         if not xml_data:
             return None
-        
+
         try:
             # Parse XML
             root = ET.fromstring(xml_data)
             ns = {"ns": "http://www.ieso.ca/schema/IMO/PDP/Report/GenOutputCapability"}
-            
+
             generation_by_source = {}
             total = 0
             renewable_mw = 0
-            
+
             fuel_types = root.findall(".//ns:FuelType", ns)
             for fuel_type in fuel_types:
                 fuel = fuel_type.find("ns:Fuel", ns)
                 output = fuel_type.find("ns:Output", ns)
-                
+
                 if fuel is not None and output is not None:
                     fuel_name = fuel.text.lower() if fuel.text else "unknown"
                     output_mw = float(output.text) if output.text else 0
-                    
+
                     generation_by_source[fuel_name] = output_mw
                     total += output_mw
-                    
+
                     if fuel_name in ["hydro", "solar", "wind", "biofuel"]:
                         renewable_mw += output_mw
-            
+
             renewable_pct = (renewable_mw / total * 100) if total > 0 else None
-            
+
             return ZonePowerBreakdown(
                 zone="CA-ON",
                 zone_name="Ontario, Canada",
@@ -3447,19 +3514,19 @@ class IESOClient:
                 power_export_mw=None,
                 generation_by_source=generation_by_source,
                 renewable_percentage=renewable_pct,
-                timestamp=datetime.now(timezone.utc),
+                timestamp=datetime.now(UTC),
                 data_source="IESO",
             )
         except Exception as e:
             _LOGGER.error("Error parsing IESO data: %s", e)
             return None
-    
+
     async def get_demand(self) -> float | None:
         """Get current Ontario demand (MW)."""
         xml_data = await self._request("Demand.xml")
         if not xml_data:
             return None
-        
+
         try:
             root = ET.fromstring(xml_data)
             # Find latest demand value
@@ -3480,7 +3547,7 @@ class AESOClient:
     
     Provides: Pool price, supply/demand, wind/solar forecasts.
     """
-    
+
     def __init__(self, session: aiohttp.ClientSession, api_key: str):
         """Initialize the client.
         
@@ -3491,12 +3558,12 @@ class AESOClient:
         self._session = session
         self._api_key = api_key
         self._base_url = "https://api.aeso.ca"
-    
+
     async def _request(self, endpoint: str) -> dict | None:
         """Make API request to AESO."""
         url = f"{self._base_url}/{endpoint}"
         headers = {"API-Key": self._api_key}
-        
+
         try:
             async with self._session.get(url, headers=headers) as resp:
                 if resp.status == 200:
@@ -3506,44 +3573,44 @@ class AESOClient:
         except Exception as e:
             _LOGGER.error("AESO API error: %s", e)
             return None
-    
+
     async def get_pool_price(self) -> DayAheadPrice | None:
         """Get current Alberta pool price."""
         data = await self._request("report/v1/poolPrice/current")
         if not data or not data.get("return"):
             return None
-        
+
         pool_data = data["return"]
         if isinstance(pool_data, list) and len(pool_data) > 0:
             pool_data = pool_data[0]
-        
+
         return DayAheadPrice(
             price=pool_data.get("pool_price", 0),
             currency="CAD",
             price_area="AB",
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             unit="CAD/MWh",
             data_source="AESO",
         )
-    
+
     async def get_current_supply_demand(self) -> dict | None:
         """Get current supply and demand for Alberta."""
         data = await self._request("report/v1/csd/summary/current")
         if not data or not data.get("return"):
             return None
-        
+
         return data["return"]
-    
+
     async def get_generation(self) -> ZonePowerBreakdown | None:
         """Get generation breakdown for Alberta."""
         data = await self.get_current_supply_demand()
         if not data:
             return None
-        
+
         generation_by_source = {}
         total = 0
         renewable_mw = 0
-        
+
         # Parse fuel types from summary
         if isinstance(data, dict):
             for key, value in data.items():
@@ -3551,12 +3618,12 @@ class AESOClient:
                     fuel = key.replace("_mw", "")
                     generation_by_source[fuel] = value
                     total += value
-                    
+
                     if fuel in ["wind", "solar", "hydro"]:
                         renewable_mw += value
-        
+
         renewable_pct = (renewable_mw / total * 100) if total > 0 else None
-        
+
         return ZonePowerBreakdown(
             zone="CA-AB",
             zone_name="Alberta, Canada",
@@ -3566,7 +3633,7 @@ class AESOClient:
             power_export_mw=None,
             generation_by_source=generation_by_source,
             renewable_percentage=renewable_pct,
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             data_source="AESO",
         )
 
@@ -3592,7 +3659,7 @@ class TranspowerClient:
     
     Provides: Generation by fuel type, demand, prices.
     """
-    
+
     def __init__(self, session: aiohttp.ClientSession):
         """Initialize the client."""
         self._session = session
@@ -3600,62 +3667,59 @@ class TranspowerClient:
         self._cache: dict = {}
         self._cache_time: datetime | None = None
         self._cache_ttl = timedelta(hours=1)  # Cache for 1 hour as data is not real-time
-    
+
     async def _get_latest_generation_file(self) -> str | None:
         """Get URL of the latest generation file."""
         # EMI publishes monthly generation files
         today = datetime.now()
         year = today.year
         month = today.month
-        
+
         # Try current month first, then previous month
         for m in [month, month - 1 if month > 1 else 12]:
             y = year if m <= month else year - 1
             filename = f"{y}{m:02d}_Generation_MD.csv"
             url = f"{self._blob_url}/Datasets/Wholesale/Generation/Generation_MD/{y}/{filename}"
-            
+
             try:
                 async with self._session.head(url) as resp:
                     if resp.status == 200:
                         return url
             except Exception:
                 continue
-        
+
         return None
-    
+
     async def _parse_generation_csv(self, url: str) -> dict | None:
         """Parse generation CSV file and return latest data."""
         try:
             async with self._session.get(url) as resp:
                 if resp.status != 200:
                     return None
-                
+
                 content = await resp.text()
                 lines = content.strip().split("\n")
                 if len(lines) < 2:
                     return None
-                
+
                 # Parse header
                 headers = lines[0].split(",")
-                
+
                 # Get the last few rows (most recent data)
                 generation_by_fuel = {}
                 total_gen = 0
                 renewable_gen = 0
-                
+
                 # Process last row
                 last_row = lines[-1].split(",")
-                
+
                 # Try to find fuel type and generation columns
                 fuel_idx = None
-                gen_idx = None
                 for i, h in enumerate(headers):
                     h_lower = h.lower().strip('"')
                     if "fuel" in h_lower or "type" in h_lower:
                         fuel_idx = i
-                    if "generation" in h_lower or "mwh" in h_lower or "quantity" in h_lower:
-                        gen_idx = i
-                
+
                 # If we can't find the structure, aggregate by fuel type
                 if fuel_idx is None:
                     # Alternative: scan the file structure for fuel-specific columns
@@ -3670,7 +3734,7 @@ class TranspowerClient:
                                     renewable_gen += val
                             except (ValueError, IndexError):
                                 pass
-                
+
                 return {
                     "generation_by_fuel": generation_by_fuel,
                     "total_generation_mw": total_gen,
@@ -3680,7 +3744,7 @@ class TranspowerClient:
         except Exception as e:
             _LOGGER.error("Error parsing NZ generation CSV: %s", e)
             return None
-    
+
     async def get_power_data(self) -> ZonePowerBreakdown | None:
         """Get current power data for New Zealand.
         
@@ -3690,16 +3754,16 @@ class TranspowerClient:
         # Check cache
         if self._cache and self._cache_time and datetime.now() - self._cache_time < self._cache_ttl:
             return self._cache.get("power_data")
-        
+
         gen_url = await self._get_latest_generation_file()
         if not gen_url:
             _LOGGER.warning("Could not find NZ generation file")
             return None
-        
+
         gen_data = await self._parse_generation_csv(gen_url)
         if not gen_data:
             return None
-        
+
         result = ZonePowerBreakdown(
             zone="NZ",
             zone_name="New Zealand",
@@ -3709,22 +3773,22 @@ class TranspowerClient:
             power_export_mw=None,
             generation_by_source=gen_data.get("generation_by_fuel", {}),
             renewable_percentage=gen_data.get("renewable_percentage"),
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             data_source="EMI New Zealand",
         )
-        
+
         # Cache result
         self._cache["power_data"] = result
         self._cache_time = datetime.now()
-        
+
         return result
-    
+
     async def get_generation_summary(self) -> dict | None:
         """Get generation summary for New Zealand."""
         power_data = await self.get_power_data()
         if not power_data:
             return None
-        
+
         return {
             "total_mw": power_data.power_production_mw,
             "generation_by_source": power_data.generation_by_source,
@@ -3732,7 +3796,7 @@ class TranspowerClient:
             "data_source": power_data.data_source,
             "note": "Data from EMI public datasets (not real-time). For real-time data, see app.em6.co.nz",
         }
-    
+
     async def get_hvdc_transfer(self) -> dict | None:
         """Get HVDC link transfer between North and South Island.
         
@@ -3758,7 +3822,7 @@ class WattTimeClient:
     
     Provides: Marginal emissions, average emissions, health damage signals.
     """
-    
+
     def __init__(self, session: aiohttp.ClientSession, username: str, password: str):
         """Initialize the client.
         
@@ -3773,38 +3837,38 @@ class WattTimeClient:
         self._base_url = "https://api.watttime.org/v3"
         self._token: str | None = None
         self._token_expiry: datetime | None = None
-    
+
     async def _get_token(self) -> str | None:
         """Get authentication token."""
-        if self._token and self._token_expiry and datetime.now(timezone.utc) < self._token_expiry:
+        if self._token and self._token_expiry and datetime.now(UTC) < self._token_expiry:
             return self._token
-        
+
         url = f"{self._base_url}/login"
         auth = aiohttp.BasicAuth(self._username, self._password)
-        
+
         try:
             async with self._session.get(url, auth=auth) as resp:
                 if resp.status == 200:
                     data = await resp.json()
                     self._token = data.get("token")
                     # Token typically valid for 30 minutes
-                    self._token_expiry = datetime.now(timezone.utc) + timedelta(minutes=25)
+                    self._token_expiry = datetime.now(UTC) + timedelta(minutes=25)
                     return self._token
                 _LOGGER.warning("WattTime login returned %d", resp.status)
                 return None
         except Exception as e:
             _LOGGER.error("WattTime login error: %s", e)
             return None
-    
+
     async def _request(self, endpoint: str, params: dict | None = None) -> dict | None:
         """Make authenticated API request to WattTime."""
         token = await self._get_token()
         if not token:
             return None
-        
+
         url = f"{self._base_url}/{endpoint}"
         headers = {"Authorization": f"Bearer {token}"}
-        
+
         try:
             async with self._session.get(url, headers=headers, params=params) as resp:
                 if resp.status == 200:
@@ -3814,14 +3878,14 @@ class WattTimeClient:
         except Exception as e:
             _LOGGER.error("WattTime API error: %s", e)
             return None
-    
+
     async def get_region_from_location(self, latitude: float, longitude: float) -> str | None:
         """Get WattTime region/ba from coordinates."""
         data = await self._request("region-from-loc", {"latitude": latitude, "longitude": longitude})
         if data:
             return data.get("region")
         return None
-    
+
     async def get_index(self, region: str) -> ZoneCarbonIntensity | None:
         """Get real-time emissions index for a region.
         
@@ -3831,7 +3895,7 @@ class WattTimeClient:
         data = await self._request("signal-index", {"region": region})
         if not data:
             return None
-        
+
         return ZoneCarbonIntensity(
             zone=region,
             zone_name=data.get("region_full_name", region),
@@ -3840,7 +3904,7 @@ class WattTimeClient:
             timestamp=datetime.fromisoformat(data.get("point_time", "").replace("Z", "+00:00")),
             data_source="WattTime",
         )
-    
+
     async def get_marginal_emissions(self, region: str) -> dict | None:
         """Get marginal emissions data.
         
@@ -3850,14 +3914,14 @@ class WattTimeClient:
         data = await self._request("signal-index", {"region": region, "signal_type": "co2_moer"})
         if not data:
             return None
-        
+
         return {
             "region": region,
             "moer": data.get("value"),  # Marginal Operating Emissions Rate
             "units": "lbs CO2/MWh",
             "timestamp": data.get("point_time"),
         }
-    
+
     async def get_health_damage(self, region: str) -> dict | None:
         """Get health damage signal for a region.
         
@@ -3867,7 +3931,7 @@ class WattTimeClient:
         data = await self._request("signal-index", {"region": region, "signal_type": "health_damage"})
         if not data:
             return None
-        
+
         return {
             "region": region,
             "health_damage_index": data.get("value"),

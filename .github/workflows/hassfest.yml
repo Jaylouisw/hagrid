@@ -1,0 +1,32 @@
+name: hassfest
+
+# Home Assistant's own validator for custom integrations. It checks the manifest against the schema
+# Home Assistant actually enforces, plus translations, config-flow shape and the integration layout.
+# It is the closest thing to "would this pass review in Home Assistant core", and it moves with
+# Home Assistant, which is why it also runs on a schedule rather than only on push.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "custom_components/**"
+      - "hacs.json"
+      - "requirements*.txt"
+      - ".github/workflows/hassfest.yml"
+  pull_request:
+    paths:
+      - "custom_components/**"
+      - "hacs.json"
+      - "requirements*.txt"
+      - ".github/workflows/hassfest.yml"
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+jobs:
+  validate:
+    name: hassfest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: home-assistant/actions/hassfest@master
