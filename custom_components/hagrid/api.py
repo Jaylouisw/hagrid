@@ -7,7 +7,7 @@ import logging
 import math
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any, ClassVar
 from xml.etree import ElementTree as ET
 
@@ -528,8 +528,7 @@ class CarbonIntensityClient(GridAPIClient):
             endpoint = f"/intensity/{{now}}/fw{hours}h"
 
         # Replace {now} with actual datetime
-        from datetime import timezone
-        now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%MZ")
+        now = datetime.now(UTC).strftime("%Y-%m-%dT%H:%MZ")
         endpoint = endpoint.replace("{now}", now)
 
         data = await self._request(endpoint)
@@ -882,7 +881,7 @@ class OverpassClient:
                     return await response.json()
                 _LOGGER.error("Overpass API error: %s", response.status)
                 return None
-        except asyncio.TimeoutError:
+        except TimeoutError:
             _LOGGER.error("Overpass API timeout")
             return None
         except Exception as e:
@@ -2682,7 +2681,7 @@ class FingridClient:
             power_export_mw=None,
             generation_by_source=generation_by_source,
             renewable_percentage=renewable_pct,
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             data_source="Fingrid",
         )
 
@@ -2743,7 +2742,7 @@ class EnerginetClient:
             zone_name="Denmark",
             carbon_intensity=int(co2_avg),
             fossil_fuel_percentage=None,
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             data_source="Energinet",
         )
 
@@ -2822,7 +2821,7 @@ class EnerginetClient:
             power_export_mw=None,
             generation_by_source=generation_by_source,
             renewable_percentage=renewable_pct,
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             data_source="Energinet",
         )
 
@@ -2891,7 +2890,7 @@ class EliaClient:
         try:
             timestamp = datetime.fromisoformat(timestamp_str.replace("Z", "+00:00"))
         except (ValueError, AttributeError):
-            timestamp = datetime.now(timezone.utc)
+            timestamp = datetime.now(UTC)
 
         return ImbalanceData(
             system_imbalance_mw=imbalance,
@@ -3010,7 +3009,7 @@ class EliaClient:
             power_import_mw=None,
             power_export_mw=None,
             generation_by_source=generation_by_source,
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             data_source="Elia",
         )
 
@@ -3137,7 +3136,7 @@ class SMARDClient:
             power_export_mw=None,
             generation_by_source=generation_by_source,
             renewable_percentage=renewable_pct,
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             data_source="SMARD",
         )
 
@@ -3168,7 +3167,7 @@ class SMARDClient:
                         price=entry[1],
                         currency="EUR",
                         price_area="DE",
-                        timestamp=datetime.fromtimestamp(entry[0] / 1000, tz=timezone.utc),
+                        timestamp=datetime.fromtimestamp(entry[0] / 1000, tz=UTC),
                         unit="EUR/MWh",
                         data_source="SMARD",
                     )
@@ -3249,7 +3248,7 @@ class PSEClient:
             power_export_mw=data.get("export"),
             generation_by_source=generation_by_source,
             renewable_percentage=renewable_pct,
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             data_source="PSE",
         )
 
@@ -3265,7 +3264,7 @@ class PSEClient:
 
         return GridFrequency(
             frequency_hz=freq,
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             target_hz=50.0,
             deviation_hz=deviation,
             status=status,
@@ -3360,7 +3359,7 @@ class TernaClient:
             power_export_mw=None,
             generation_by_source=generation_by_source,
             renewable_percentage=renewable_pct,
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             data_source="Terna",
         )
 
@@ -3439,7 +3438,7 @@ class IESOClient:
                 power_export_mw=None,
                 generation_by_source=generation_by_source,
                 renewable_percentage=renewable_pct,
-                timestamp=datetime.now(timezone.utc),
+                timestamp=datetime.now(UTC),
                 data_source="IESO",
             )
         except Exception as e:
@@ -3513,7 +3512,7 @@ class AESOClient:
             price=pool_data.get("pool_price", 0),
             currency="CAD",
             price_area="AB",
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             unit="CAD/MWh",
             data_source="AESO",
         )
@@ -3558,7 +3557,7 @@ class AESOClient:
             power_export_mw=None,
             generation_by_source=generation_by_source,
             renewable_percentage=renewable_pct,
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             data_source="AESO",
         )
 
@@ -3698,7 +3697,7 @@ class TranspowerClient:
             power_export_mw=None,
             generation_by_source=gen_data.get("generation_by_fuel", {}),
             renewable_percentage=gen_data.get("renewable_percentage"),
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             data_source="EMI New Zealand",
         )
 
@@ -3765,7 +3764,7 @@ class WattTimeClient:
 
     async def _get_token(self) -> str | None:
         """Get authentication token."""
-        if self._token and self._token_expiry and datetime.now(timezone.utc) < self._token_expiry:
+        if self._token and self._token_expiry and datetime.now(UTC) < self._token_expiry:
             return self._token
 
         url = f"{self._base_url}/login"
@@ -3777,7 +3776,7 @@ class WattTimeClient:
                     data = await resp.json()
                     self._token = data.get("token")
                     # Token typically valid for 30 minutes
-                    self._token_expiry = datetime.now(timezone.utc) + timedelta(minutes=25)
+                    self._token_expiry = datetime.now(UTC) + timedelta(minutes=25)
                     return self._token
                 _LOGGER.warning("WattTime login returned %d", resp.status)
                 return None
