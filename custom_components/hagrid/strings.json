@@ -1,0 +1,265 @@
+{
+    "config": {
+        "step": {
+            "user": {
+                "title": "Configure HAGrid",
+                "description": "Enter your UK postcode to get local grid data",
+                "data": {
+                    "postcode": "Postcode"
+                },
+                "data_description": {
+                    "postcode": "Your UK postcode (e.g., SW1A 1AA). Used to determine your DNO and carbon intensity region."
+                }
+            },
+            "region": {
+                "title": "Select Region",
+                "description": "Select your electricity region",
+                "data": {
+                    "region_id": "Region"
+                },
+                "data_description": {
+                    "region_id": "Select the electricity region for carbon intensity data"
+                }
+            },
+            "confirm": {
+                "title": "API Keys (Optional)",
+                "description": "Configure your API keys for additional data sources. All keys are stored securely in Home Assistant's encrypted storage.\n\n**Region:** {region}\n**DNO:** {dno}",
+                "data": {
+                    "national_grid_api_key": "National Grid API Key",
+                    "ssen_nerda_api_key": "SSEN NERDA API Key",
+                    "energy_dashboard_api_key": "Energy Dashboard API Key",
+                    "electricity_maps_api_key": "Electricity Maps API Key",
+                    "electricity_maps_zone": "Electricity Maps Zone",
+                    "eia_api_key": "EIA API Key (USA)",
+                    "eia_region": "EIA Region",
+                    "entsoe_api_key": "ENTSO-E Security Token (Europe)",
+                    "entsoe_area": "ENTSO-E Area",
+                    "rte_client_id": "RTE Client ID (France)",
+                    "rte_client_secret": "RTE Client Secret",
+                    "australia_region": "Australia Region",
+                    "spain_region": "Spain Region"
+                },
+                "data_description": {
+                    "national_grid_api_key": "API key from connecteddata.nationalgrid.co.uk",
+                    "ssen_nerda_api_key": "API key from SSEN NERDA portal",
+                    "energy_dashboard_api_key": "API key from energydashboard.co.uk",
+                    "electricity_maps_api_key": "API key from app.electricitymap.org (free tier available)",
+                    "electricity_maps_zone": "Zone code for global carbon data (e.g., GB, US-CAL-CISO, DE)",
+                    "eia_api_key": "Free API key from eia.gov (USA electricity data)",
+                    "eia_region": "US RTO/ISO region for demand and generation data",
+                    "entsoe_api_key": "Free security token from transparency.entsoe.eu",
+                    "entsoe_area": "European TSO area for generation and load data",
+                    "rte_client_id": "OAuth2 client ID from data.rte-france.com",
+                    "rte_client_secret": "OAuth2 client secret for RTE API",
+                    "australia_region": "Australian NEM/WEM region (free, no key required)",
+                    "spain_region": "Spanish REE region (free, no key required)"
+                }
+            }
+        },
+        "error": {
+            "invalid_postcode": "Invalid UK postcode format",
+            "cannot_connect": "Unable to connect to grid data APIs",
+            "unknown": "An unexpected error occurred"
+        },
+        "abort": {
+            "already_configured": "HAGrid is already configured"
+        }
+    },
+    "options": {
+        "step": {
+            "init": {
+                "title": "HAGrid Options",
+                "data": {
+                    "update_interval": "Update interval (seconds)",
+                    "show_infrastructure": "Show infrastructure on map",
+                    "show_live_faults": "Show live faults",
+                    "include_osm_data": "Include OpenStreetMap power data",
+                    "osm_radius_km": "OSM data radius (km)"
+                },
+                "data_description": {
+                    "update_interval": "How often to refresh data from grid APIs",
+                    "show_infrastructure": "Display substations and power lines on the map",
+                    "show_live_faults": "Show active faults and outages",
+                    "include_osm_data": "Fetch power infrastructure from OpenStreetMap Overpass API",
+                    "osm_radius_km": "Radius around your postcode to search for OSM power features"
+                }
+            },
+            "api_keys": {
+                "title": "API Keys",
+                "description": "Update your API keys for premium data sources. Leave blank to disable a source.",
+                "data": {
+                    "national_grid_api_key": "National Grid API Key",
+                    "ssen_nerda_api_key": "SSEN NERDA API Key",
+                    "energy_dashboard_api_key": "Energy Dashboard API Key",
+                    "electricity_maps_api_key": "Electricity Maps API Key",
+                    "electricity_maps_zone": "Electricity Maps Zone",
+                    "eia_api_key": "EIA API Key (USA)",
+                    "eia_region": "EIA Region",
+                    "entsoe_api_key": "ENTSO-E Security Token (Europe)",
+                    "entsoe_area": "ENTSO-E Area",
+                    "rte_client_id": "RTE Client ID (France)",
+                    "rte_client_secret": "RTE Client Secret",
+                    "australia_region": "Australia Region",
+                    "spain_region": "Spain Region"
+                }
+            }
+        }
+    },
+    "entity": {
+        "sensor": {
+            "carbon_intensity": {
+                "name": "Carbon Intensity",
+                "state_attributes": {
+                    "region": {"name": "Region"},
+                    "dno": {"name": "DNO"},
+                    "actual": {"name": "Actual"},
+                    "index": {"name": "Index"}
+                }
+            },
+            "carbon_index": {
+                "name": "Carbon Index"
+            },
+            "generation_mix": {
+                "name": "Generation Mix",
+                "state_attributes": {
+                    "renewable_percentage": {"name": "Renewable"},
+                    "fossil_percentage": {"name": "Fossil"},
+                    "low_carbon_percentage": {"name": "Low Carbon"}
+                }
+            },
+            "live_faults": {
+                "name": "Live Faults",
+                "state_attributes": {
+                    "planned_outages": {"name": "Planned Outages"},
+                    "unplanned_outages": {"name": "Unplanned Outages"},
+                    "affected_customers": {"name": "Affected Customers"}
+                }
+            },
+            "map_data": {
+                "name": "Grid Map"
+            },
+            "carbon_forecast": {
+                "name": "Carbon Forecast",
+                "state": {
+                    "decreasing": "Decreasing",
+                    "increasing": "Increasing",
+                    "stable": "Stable"
+                },
+                "state_attributes": {
+                    "best_time": {"name": "Best Time"},
+                    "best_intensity": {"name": "Best Intensity"},
+                    "worst_time": {"name": "Worst Time"},
+                    "worst_intensity": {"name": "Worst Intensity"}
+                }
+            },
+            "system_frequency": {
+                "name": "System Frequency",
+                "state_attributes": {
+                    "target_hz": {"name": "Target"},
+                    "deviation_hz": {"name": "Deviation"},
+                    "status": {"name": "Status"}
+                }
+            },
+            "national_demand": {
+                "name": "National Demand",
+                "state_attributes": {
+                    "demand_type": {"name": "Demand Type"},
+                    "settlement_period": {"name": "Settlement Period"}
+                }
+            },
+            "total_generation": {
+                "name": "Total Generation"
+            },
+            "net_imports": {
+                "name": "Net Imports",
+                "state_attributes": {
+                    "total_import_mw": {"name": "Total Import"},
+                    "total_export_mw": {"name": "Total Export"},
+                    "direction": {"name": "Direction"}
+                }
+            },
+            "circuit_flows": {
+                "name": "Circuit Flows",
+                "state_attributes": {
+                    "circuits": {"name": "Circuits"},
+                    "generation_count": {"name": "Generation Circuits"},
+                    "interconnector_count": {"name": "Interconnectors"},
+                    "total_generation_mw": {"name": "Total Generation"}
+                }
+            },
+            "interconnectors": {
+                "name": "Interconnectors",
+                "state_attributes": {
+                    "total_import_mw": {"name": "Total Import"},
+                    "total_export_mw": {"name": "Total Export"},
+                    "net_flow_mw": {"name": "Net Flow"},
+                    "countries": {"name": "Countries"}
+                }
+            },
+            "global_carbon_intensity": {
+                "name": "Global Carbon Intensity",
+                "state_attributes": {
+                    "zone": {"name": "Zone"},
+                    "zone_name": {"name": "Zone Name"},
+                    "fossil_fuel_percentage": {"name": "Fossil Fuel %"},
+                    "renewable_percentage": {"name": "Renewable %"},
+                    "data_source": {"name": "Data Source"}
+                }
+            },
+            "global_power_breakdown": {
+                "name": "Global Power Breakdown",
+                "state_attributes": {
+                    "zone": {"name": "Zone"},
+                    "renewable_percentage": {"name": "Renewable %"},
+                    "fossil_percentage": {"name": "Fossil %"},
+                    "nuclear_percentage": {"name": "Nuclear %"}
+                }
+            },
+            "eia_demand": {
+                "name": "USA Grid Demand (EIA)",
+                "state_attributes": {
+                    "region": {"name": "Region"},
+                    "region_name": {"name": "Region Name"},
+                    "update_time": {"name": "Updated"}
+                }
+            },
+            "entsoe_load": {
+                "name": "Europe Grid Load (ENTSO-E)",
+                "state_attributes": {
+                    "area": {"name": "Area"},
+                    "area_name": {"name": "Area Name"},
+                    "country": {"name": "Country"}
+                }
+            },
+            "australia_carbon": {
+                "name": "Australia Carbon Intensity",
+                "state_attributes": {
+                    "region": {"name": "Region"},
+                    "network": {"name": "Network"}
+                }
+            },
+            "spain_co2_free": {
+                "name": "Spain CO2-Free Generation",
+                "state_attributes": {
+                    "renewable_percentage": {"name": "Renewable %"},
+                    "nuclear_percentage": {"name": "Nuclear %"}
+                }
+            },
+            "france_generation": {
+                "name": "France Generation (RTE)",
+                "state_attributes": {
+                    "nuclear_percentage": {"name": "Nuclear %"},
+                    "renewable_percentage": {"name": "Renewable %"},
+                    "total_mw": {"name": "Total MW"}
+                }
+            },
+            "active_global_sources": {
+                "name": "Active Global Sources",
+                "state_attributes": {
+                    "sources": {"name": "Sources"},
+                    "source_count": {"name": "Count"}
+                }
+            }
+        }
+    }
+}

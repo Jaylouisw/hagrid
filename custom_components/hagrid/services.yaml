@@ -1,0 +1,41 @@
+# Services for HAGrid integration
+
+refresh_data:
+  name: Refresh Grid Data
+  description: Force refresh all grid data including carbon intensity and generation mix.
+
+refresh_infrastructure:
+  name: Refresh Infrastructure
+  description: Force refresh infrastructure data (substations, power lines). This is normally cached for 1 hour.
+
+get_best_time:
+  name: Get Best Time
+  description: Get the best time to use electricity based on carbon intensity forecast.
+  fields:
+    hours_ahead:
+      name: Hours Ahead
+      description: How many hours ahead to look for the best time.
+      required: false
+      default: 24
+      example: 12
+      selector:
+        number:
+          min: 1
+          max: 48
+          unit_of_measurement: hours
+
+check_postcode:
+  name: Check Postcode
+  description: Get grid information for a specific UK postcode.
+  fields:
+    postcode:
+      name: Postcode
+      description: The UK postcode to check.
+      required: true
+      example: "SW1A 1AA"
+      selector:
+        text:
+
+get_regional_comparison:
+  name: Get Regional Comparison
+  description: Compare carbon intensity across all UK regions.

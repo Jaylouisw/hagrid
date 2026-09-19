@@ -1,0 +1,5 @@
+{
+  "name": "HAGrid - UK Electrical Grid Map",
+  "render_readme": true,
+  "homeassistant": "2024.1.0"
+}

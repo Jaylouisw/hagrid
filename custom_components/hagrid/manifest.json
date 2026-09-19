@@ -1,0 +1,12 @@
+{
+  "domain": "hagrid",
+  "name": "HAGrid - Electrical Grid Map",
+  "codeowners": ["@jaylouisw"],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://github.com/jaylouisw/hagrid",
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/jaylouisw/hagrid/issues",
+  "requirements": ["aiohttp>=3.8.0"],
+  "version": "1.1.0"
+}
