@@ -23,9 +23,9 @@ from .api import (
     EnerginetClient,
     EnergyDashboardClient,
     ENTSOEClient,
-    GeocoderUnavailable,
     # Additional open API clients
     FingridClient,
+    GeocoderUnavailable,
     IESOClient,
     NationalGridClient,
     NESOClient,
