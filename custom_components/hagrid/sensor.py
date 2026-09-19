@@ -28,7 +28,7 @@ async def async_setup_entry(
 ) -> None:
     """Set up HAGrid sensors."""
     coordinator: HAGridCoordinator = hass.data[DOMAIN][entry.entry_id]
-    
+
     entities = [
         HAGridCarbonIntensitySensor(coordinator, entry),
         HAGridCarbonIndexSensor(coordinator, entry),
@@ -44,22 +44,22 @@ async def async_setup_entry(
         HAGridCircuitFlowsSensor(coordinator, entry),
         HAGridInterconnectorsSensor(coordinator, entry),
     ]
-    
+
     # Add individual fuel sensors
     if coordinator.generation_mix:
         for fuel in coordinator.generation_mix:
             entities.append(
                 HAGridFuelSensor(coordinator, entry, fuel["fuel"])
             )
-    
+
     async_add_entities(entities)
 
 
 class HAGridBaseSensor(CoordinatorEntity[HAGridCoordinator], SensorEntity):
     """Base sensor for HAGrid."""
-    
+
     _attr_has_entity_name = True
-    
+
     def __init__(
         self,
         coordinator: HAGridCoordinator,
@@ -78,12 +78,12 @@ class HAGridBaseSensor(CoordinatorEntity[HAGridCoordinator], SensorEntity):
 
 class HAGridCarbonIntensitySensor(HAGridBaseSensor):
     """Carbon intensity sensor."""
-    
+
     _attr_name = "Carbon Intensity"
     _attr_native_unit_of_measurement = "gCO2/kWh"
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_icon = "mdi:molecule-co2"
-    
+
     def __init__(
         self,
         coordinator: HAGridCoordinator,
@@ -92,12 +92,12 @@ class HAGridCarbonIntensitySensor(HAGridBaseSensor):
         """Initialize the sensor."""
         super().__init__(coordinator, entry)
         self._attr_unique_id = f"{entry.entry_id}_carbon_intensity"
-    
+
     @property
     def native_value(self) -> int | None:
         """Return the carbon intensity."""
         return self.coordinator.carbon_intensity
-    
+
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return extra attributes."""
@@ -114,10 +114,10 @@ class HAGridCarbonIntensitySensor(HAGridBaseSensor):
 
 class HAGridCarbonIndexSensor(HAGridBaseSensor):
     """Carbon intensity index sensor."""
-    
+
     _attr_name = "Carbon Index"
     _attr_icon = "mdi:leaf"
-    
+
     def __init__(
         self,
         coordinator: HAGridCoordinator,
@@ -126,12 +126,12 @@ class HAGridCarbonIndexSensor(HAGridBaseSensor):
         """Initialize the sensor."""
         super().__init__(coordinator, entry)
         self._attr_unique_id = f"{entry.entry_id}_carbon_index"
-    
+
     @property
     def native_value(self) -> str | None:
         """Return the carbon index."""
         return self.coordinator.carbon_index
-    
+
     @property
     def icon(self) -> str:
         """Return dynamic icon based on index."""
@@ -142,7 +142,7 @@ class HAGridCarbonIndexSensor(HAGridBaseSensor):
             return "mdi:leaf-off"
         else:
             return "mdi:alert"
-    
+
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return extra attributes."""
@@ -154,10 +154,10 @@ class HAGridCarbonIndexSensor(HAGridBaseSensor):
 
 class HAGridGenerationMixSensor(HAGridBaseSensor):
     """Generation mix sensor."""
-    
+
     _attr_name = "Generation Mix"
     _attr_icon = "mdi:chart-pie"
-    
+
     def __init__(
         self,
         coordinator: HAGridCoordinator,
@@ -166,7 +166,7 @@ class HAGridGenerationMixSensor(HAGridBaseSensor):
         """Initialize the sensor."""
         super().__init__(coordinator, entry)
         self._attr_unique_id = f"{entry.entry_id}_generation_mix"
-    
+
     @property
     def native_value(self) -> str | None:
         """Return the dominant fuel type."""
@@ -176,14 +176,14 @@ class HAGridGenerationMixSensor(HAGridBaseSensor):
             dominant = max(mix, key=lambda x: x["percentage"])
             return dominant["fuel"]
         return None
-    
+
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return the full generation mix."""
         mix = self.coordinator.generation_mix
         if not mix:
             return {}
-        
+
         attrs = {
             "mix": mix,
             "renewable_percentage": sum(
@@ -199,20 +199,20 @@ class HAGridGenerationMixSensor(HAGridBaseSensor):
                 if f["fuel"] in ["wind", "solar", "hydro", "nuclear", "biomass"]
             ),
         }
-        
+
         # Add individual fuel percentages
         for fuel in mix:
             attrs[f"{fuel['fuel']}_percentage"] = fuel["percentage"]
-        
+
         return attrs
 
 
 class HAGridFuelSensor(HAGridBaseSensor):
     """Individual fuel type sensor."""
-    
+
     _attr_native_unit_of_measurement = PERCENTAGE
     _attr_state_class = SensorStateClass.MEASUREMENT
-    
+
     def __init__(
         self,
         coordinator: HAGridCoordinator,
@@ -225,7 +225,7 @@ class HAGridFuelSensor(HAGridBaseSensor):
         self._attr_name = f"{fuel.title()} Generation"
         self._attr_unique_id = f"{entry.entry_id}_{fuel}_generation"
         self._attr_icon = self._get_fuel_icon()
-    
+
     def _get_fuel_icon(self) -> str:
         """Get icon for fuel type."""
         icons = {
@@ -241,7 +241,7 @@ class HAGridFuelSensor(HAGridBaseSensor):
             "other": "mdi:power-plug",
         }
         return icons.get(self._fuel, "mdi:power-plug")
-    
+
     @property
     def native_value(self) -> float | None:
         """Return the percentage for this fuel."""
@@ -251,7 +251,7 @@ class HAGridFuelSensor(HAGridBaseSensor):
                 if fuel["fuel"] == self._fuel:
                     return fuel["percentage"]
         return None
-    
+
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return extra attributes."""
@@ -262,11 +262,11 @@ class HAGridFuelSensor(HAGridBaseSensor):
 
 class HAGridLiveFaultsSensor(HAGridBaseSensor):
     """Live faults sensor."""
-    
+
     _attr_name = "Live Faults"
     _attr_icon = "mdi:alert-circle"
     _attr_state_class = SensorStateClass.MEASUREMENT
-    
+
     def __init__(
         self,
         coordinator: HAGridCoordinator,
@@ -275,34 +275,34 @@ class HAGridLiveFaultsSensor(HAGridBaseSensor):
         """Initialize the sensor."""
         super().__init__(coordinator, entry)
         self._attr_unique_id = f"{entry.entry_id}_live_faults"
-    
+
     @property
     def native_value(self) -> int:
         """Return the number of live faults."""
         return self.coordinator.live_fault_count
-    
+
     @property
     def icon(self) -> str:
         """Return dynamic icon."""
         if self.coordinator.live_fault_count > 0:
             return "mdi:alert-circle"
         return "mdi:check-circle"
-    
+
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return fault details."""
         if not self.coordinator.data:
             return {}
-        
+
         faults = self.coordinator.data.get("live_faults", [])
-        
+
         # Group by type
         planned = sum(1 for f in faults if f.incident_type == "planned")
         unplanned = sum(1 for f in faults if f.incident_type == "unplanned")
-        
+
         # Total affected customers
         total_customers = sum(f.estimated_customers for f in faults)
-        
+
         return {
             "planned_outages": planned,
             "unplanned_outages": unplanned,
@@ -321,10 +321,10 @@ class HAGridLiveFaultsSensor(HAGridBaseSensor):
 
 class HAGridMapDataSensor(HAGridBaseSensor):
     """Map data sensor for Lovelace card."""
-    
+
     _attr_name = "Grid Map"
     _attr_icon = "mdi:map"
-    
+
     def __init__(
         self,
         coordinator: HAGridCoordinator,
@@ -333,12 +333,12 @@ class HAGridMapDataSensor(HAGridBaseSensor):
         """Initialize the sensor."""
         super().__init__(coordinator, entry)
         self._attr_unique_id = f"{entry.entry_id}_map_data"
-    
+
     @property
     def native_value(self) -> str:
         """Return a simple state."""
         return self.coordinator.region_name or "UK Grid"
-    
+
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return the full map data."""
@@ -347,10 +347,10 @@ class HAGridMapDataSensor(HAGridBaseSensor):
 
 class HAGridForecastSensor(HAGridBaseSensor):
     """Carbon intensity forecast sensor."""
-    
+
     _attr_name = "Carbon Forecast"
     _attr_icon = "mdi:chart-line"
-    
+
     def __init__(
         self,
         coordinator: HAGridCoordinator,
@@ -359,26 +359,26 @@ class HAGridForecastSensor(HAGridBaseSensor):
         """Initialize the sensor."""
         super().__init__(coordinator, entry)
         self._attr_unique_id = f"{entry.entry_id}_carbon_forecast"
-    
+
     @property
     def native_value(self) -> str | None:
         """Return the trend direction."""
         if not self.coordinator.data:
             return None
-        
+
         forecast = self.coordinator.data.get("forecast", [])
         if len(forecast) < 2:
             return "stable"
-        
+
         current = forecast[0].forecast if forecast else 0
         future = forecast[-1].forecast if forecast else 0
-        
+
         if future < current * 0.9:
             return "decreasing"
         elif future > current * 1.1:
             return "increasing"
         return "stable"
-    
+
     @property
     def icon(self) -> str:
         """Return dynamic icon based on trend."""
@@ -388,20 +388,20 @@ class HAGridForecastSensor(HAGridBaseSensor):
         elif value == "increasing":
             return "mdi:trending-up"
         return "mdi:trending-neutral"
-    
+
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return the forecast data."""
         if not self.coordinator.data:
             return {}
-        
+
         forecast = self.coordinator.data.get("forecast", [])
-        
+
         # Find best time to use energy (lowest intensity)
         if forecast:
             best = min(forecast, key=lambda x: x.forecast)
             worst = max(forecast, key=lambda x: x.forecast)
-            
+
             return {
                 "forecast": [
                     {
@@ -417,19 +417,19 @@ class HAGridForecastSensor(HAGridBaseSensor):
                 "worst_time": worst.from_time.isoformat(),
                 "worst_intensity": worst.forecast,
             }
-        
+
         return {}
 
 
 class HAGridSystemFrequencySensor(HAGridBaseSensor):
     """System frequency sensor - real-time grid frequency (target 50Hz)."""
-    
+
     _attr_name = "System Frequency"
     _attr_native_unit_of_measurement = "Hz"
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_icon = "mdi:sine-wave"
     _attr_suggested_display_precision = 3
-    
+
     def __init__(
         self,
         coordinator: HAGridCoordinator,
@@ -438,12 +438,12 @@ class HAGridSystemFrequencySensor(HAGridBaseSensor):
         """Initialize the sensor."""
         super().__init__(coordinator, entry)
         self._attr_unique_id = f"{entry.entry_id}_system_frequency"
-    
+
     @property
     def native_value(self) -> float | None:
         """Return the current system frequency."""
         return self.coordinator.system_frequency
-    
+
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return additional attributes."""
@@ -461,13 +461,13 @@ class HAGridSystemFrequencySensor(HAGridBaseSensor):
 
 class HAGridNationalDemandSensor(HAGridBaseSensor):
     """National demand sensor - current electricity demand in MW."""
-    
+
     _attr_name = "National Demand"
     _attr_native_unit_of_measurement = "MW"
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_device_class = SensorDeviceClass.POWER
     _attr_icon = "mdi:transmission-tower"
-    
+
     def __init__(
         self,
         coordinator: HAGridCoordinator,
@@ -476,18 +476,18 @@ class HAGridNationalDemandSensor(HAGridBaseSensor):
         """Initialize the sensor."""
         super().__init__(coordinator, entry)
         self._attr_unique_id = f"{entry.entry_id}_national_demand"
-    
+
     @property
     def native_value(self) -> float | None:
         """Return the current national demand."""
         return self.coordinator.national_demand
-    
+
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return demand details."""
         if not self.coordinator.data:
             return {}
-        
+
         demand = self.coordinator.data.get("demand")
         if demand:
             return {
@@ -500,13 +500,13 @@ class HAGridNationalDemandSensor(HAGridBaseSensor):
 
 class HAGridTotalGenerationSensor(HAGridBaseSensor):
     """Total generation sensor - all generation sources combined."""
-    
+
     _attr_name = "Total Generation"
     _attr_native_unit_of_measurement = "MW"
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_device_class = SensorDeviceClass.POWER
     _attr_icon = "mdi:lightning-bolt"
-    
+
     def __init__(
         self,
         coordinator: HAGridCoordinator,
@@ -515,38 +515,38 @@ class HAGridTotalGenerationSensor(HAGridBaseSensor):
         """Initialize the sensor."""
         super().__init__(coordinator, entry)
         self._attr_unique_id = f"{entry.entry_id}_total_generation"
-    
+
     @property
     def native_value(self) -> float | None:
         """Return total generation."""
         return self.coordinator.total_generation
-    
+
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return generation breakdown by fuel type."""
         if not self.coordinator.data:
             return {}
-        
+
         summary = self.coordinator.data.get("grid_summary", {})
         generation = summary.get("generation", {})
-        
+
         attrs = {}
         for fuel, data in generation.items():
             key = f"{fuel.lower()}_mw"
             attrs[key] = data.get("output_mw", 0)
             attrs[f"{fuel.lower()}_pct"] = data.get("percentage")
-        
+
         return attrs
 
 
 class HAGridNetImportsSensor(HAGridBaseSensor):
     """Net imports sensor - balance of interconnector flows."""
-    
+
     _attr_name = "Net Imports"
     _attr_native_unit_of_measurement = "MW"
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_icon = "mdi:swap-horizontal"
-    
+
     def __init__(
         self,
         coordinator: HAGridCoordinator,
@@ -555,12 +555,12 @@ class HAGridNetImportsSensor(HAGridBaseSensor):
         """Initialize the sensor."""
         super().__init__(coordinator, entry)
         self._attr_unique_id = f"{entry.entry_id}_net_imports"
-    
+
     @property
     def native_value(self) -> float | None:
         """Return net imports (positive = importing, negative = exporting)."""
         return self.coordinator.net_imports
-    
+
     @property
     def icon(self) -> str:
         """Dynamic icon based on flow direction."""
@@ -570,13 +570,13 @@ class HAGridNetImportsSensor(HAGridBaseSensor):
         elif value and value < 0:
             return "mdi:export"
         return "mdi:swap-horizontal"
-    
+
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return import/export details."""
         if not self.coordinator.data:
             return {}
-        
+
         summary = self.coordinator.data.get("grid_summary", {})
         return {
             "total_import_mw": summary.get("total_import_mw"),
@@ -587,10 +587,10 @@ class HAGridNetImportsSensor(HAGridBaseSensor):
 
 class HAGridCircuitFlowsSensor(HAGridBaseSensor):
     """Circuit flows sensor - all metered circuits with power flow data."""
-    
+
     _attr_name = "Circuit Flows"
     _attr_icon = "mdi:chart-sankey"
-    
+
     def __init__(
         self,
         coordinator: HAGridCoordinator,
@@ -599,25 +599,25 @@ class HAGridCircuitFlowsSensor(HAGridBaseSensor):
         """Initialize the sensor."""
         super().__init__(coordinator, entry)
         self._attr_unique_id = f"{entry.entry_id}_circuit_flows"
-    
+
     @property
     def native_value(self) -> int:
         """Return count of metered circuits."""
         return self.coordinator.circuit_flow_count
-    
+
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return all circuit flow data for visualization."""
         if not self.coordinator.data:
             return {}
-        
+
         flows = self.coordinator.data.get("circuit_flows", [])
-        
+
         # Group by type
         generation_flows = [f for f in flows if f.circuit_type == "generation"]
         interconnector_flows = [f for f in flows if f.circuit_type == "interconnector"]
         demand_flows = [f for f in flows if f.circuit_type == "demand"]
-        
+
         return {
             "circuits": [
                 {
@@ -641,10 +641,10 @@ class HAGridCircuitFlowsSensor(HAGridBaseSensor):
 
 class HAGridInterconnectorsSensor(HAGridBaseSensor):
     """Interconnectors sensor - power flows to/from other countries."""
-    
+
     _attr_name = "Interconnectors"
     _attr_icon = "mdi:earth"
-    
+
     def __init__(
         self,
         coordinator: HAGridCoordinator,
@@ -653,26 +653,26 @@ class HAGridInterconnectorsSensor(HAGridBaseSensor):
         """Initialize the sensor."""
         super().__init__(coordinator, entry)
         self._attr_unique_id = f"{entry.entry_id}_interconnectors"
-    
+
     @property
     def native_value(self) -> int:
         """Return count of active interconnectors."""
         if not self.coordinator.data:
             return 0
         return len(self.coordinator.data.get("interconnector_flows", []))
-    
+
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return all interconnector flow data."""
         if not self.coordinator.data:
             return {}
-        
+
         flows = self.coordinator.data.get("interconnector_flows", [])
-        
+
         interconnectors = {}
         total_import = 0
         total_export = 0
-        
+
         for ic in flows:
             interconnectors[ic.interconnector_id] = {
                 "name": ic.name,
@@ -686,7 +686,7 @@ class HAGridInterconnectorsSensor(HAGridBaseSensor):
                 total_import += ic.flow_mw
             else:
                 total_export += abs(ic.flow_mw)
-        
+
         return {
             "interconnectors": interconnectors,
             "total_import_mw": total_import,
