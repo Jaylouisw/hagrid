@@ -32,6 +32,7 @@ from .const import (
     NESO_DATASETS,
     OPENELECTRICITY_API_BASE,
     OVERPASS_API,
+    POSTCODES_IO_API,
     REE_ESIOS_API_BASE,
     RTE_API_BASE,
     SSEN_NERDA_API_BASE,
@@ -317,6 +318,81 @@ class GridAPIClient(ABC):
         region_id: int | None = None,
     ) -> list[GenerationMix]:
         """Get current generation mix."""
+
+
+class GeocoderUnavailable(Exception):
+    """The reverse geocode lookup could not be completed."""
+
+
+@dataclass
+class ResolvedLocation:
+    """A coordinate expressed the way the grid APIs want it."""
+
+    outcode: str
+    latitude: float
+    longitude: float
+    country: str
+
+
+class PostcodesIoClient:
+    """Reverse geocoding for Great Britain, from postcodes.io.
+
+    Home Assistant knows its latitude and longitude. The Carbon Intensity API's regional endpoints
+    want a postcode. One lookup bridges the two, and outside Great Britain the service answers with a
+    null result rather than an error, which makes it usable as the "is this address in GB" check too.
+    Free, keyless and Open Government Licence, like every other source on the GB path.
+    """
+
+    def __init__(self, session: aiohttp.ClientSession) -> None:
+        """Initialize the client."""
+        self.session = session
+        self.base_url = POSTCODES_IO_API
+
+    async def reverse_geocode(
+        self, latitude: float, longitude: float
+    ) -> ResolvedLocation | None:
+        """Nearest postcode to a coordinate, or None when the coordinate is not in Great Britain.
+
+        Raises GeocoderUnavailable when the lookup could not be made at all: "this address is not in
+        Great Britain" and "I could not reach the lookup service" need different words in front of a
+        user, and both measured cases are real (the default Home Assistant location is outside GB,
+        and a service can be down).
+        """
+        params = {"lon": longitude, "lat": latitude, "limit": 1}
+        try:
+            async with self.session.get(
+                f"{self.base_url}/postcodes", params=params
+            ) as response:
+                if response.status != 200:
+                    raise GeocoderUnavailable(
+                        f"postcodes.io returned HTTP {response.status}"
+                    )
+                payload = await response.json()
+        except GeocoderUnavailable:
+            raise
+        except Exception as err:
+            raise GeocoderUnavailable(f"postcodes.io request failed: {err}") from err
+
+        results = payload.get("result") or []
+        if not results:
+            _LOGGER.info(
+                "No GB postcode within range of %.4f, %.4f; the grid APIs are GB-only",
+                latitude,
+                longitude,
+            )
+            return None
+
+        nearest = results[0]
+        outcode = nearest.get("outcode")
+        if not outcode:
+            return None
+
+        return ResolvedLocation(
+            outcode=outcode,
+            latitude=nearest.get("latitude", latitude),
+            longitude=nearest.get("longitude", longitude),
+            country=nearest.get("country", ""),
+        )
 
 
 class CarbonIntensityClient(GridAPIClient):

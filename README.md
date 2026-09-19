@@ -18,7 +18,8 @@ mix, live faults, and your local grid infrastructure on an interactive map.
 3. Add `https://github.com/jaylouisw/hagrid` — Category: **Integration**
 4. Search for **HAGrid** and install
 5. Restart Home Assistant
-6. **Settings → Devices & Services → Add Integration → HAGrid**, then enter your postcode
+6. **Settings → Devices & Services → Add Integration → HAGrid**. HAGrid takes your grid region
+   from the home location already set in Home Assistant, so there is no postcode to enter.
 
 ### Manual
 
@@ -57,13 +58,23 @@ show_faults: true
 
 ## ⚙️ Configuration
 
-1. Enter your UK postcode (e.g. `SW1A 1AA`)
-2. Select your electricity region (auto-detected from the postcode)
-3. Configure update intervals and display options
+HAGrid uses the home location already set in Home Assistant (**Settings → System → General → Home
+location**). That location becomes a UK postcode through postcodes.io, and the postcode picks your
+carbon intensity region and your DNO. There is no postcode to type in.
+
+If Home Assistant is not installed in Great Britain, or you want grid data for somewhere else, the
+integration offers the region list instead and your choice overrides the automatic detection. The
+same list is what you get when the lookup service cannot be reached.
+
+| Where the region comes from | What happens when the home location changes |
+|---|---|
+| The home location (the default) | Re-checked on every restart, so moving house corrects itself |
+| A region picked by hand | Stays as set. Turn **Follow the Home Assistant home location** back on in Options to hand it back |
 
 | Option | Default | Description |
 |---|---|---|
-| Update interval | 120s | How often to fetch new data |
+| Follow the HA home location | On | Keep the grid region in step with the home location |
+| Update interval | 300s | How often to fetch new data |
 | Show infrastructure | ✓ | Display substations and power lines |
 | Show live faults | ✓ | Display active power cuts |
 | Include forecast | ✓ | Fetch 48-hour carbon forecast |
@@ -123,6 +134,7 @@ automation:
 |---|---|---|
 | [Carbon Intensity API](https://api.carbonintensity.org.uk/) | Carbon intensity, generation mix, forecasts | Open Government Licence |
 | [UKPN Open Data](https://ukpowernetworks.opendatasoft.com/) | Substations, power lines, faults, embedded generation | CC BY 4.0 |
+| [postcodes.io](https://postcodes.io/) | Reverse geocoding: the Home Assistant home location to a UK postcode | Open Government Licence |
 
 Every source used by the core GB feature is free and keyless. The DNO layer currently covers
 **UK Power Networks** (London, Eastern, South Eastern); other DNOs are roadmap items, and the
@@ -138,6 +150,17 @@ non-GB TSO clients in the code are unverified — treat the GB path as what work
 - [ ] Custom region overlays
 
 ## 📝 Changelog
+
+### Unreleased
+
+- **There is no postcode to enter any more.** HAGrid reads the home location already set in Home
+  Assistant, turns it into a postcode through postcodes.io, and uses that for the carbon intensity
+  region and the DNO. A home location outside Great Britain, or a lookup service that cannot be
+  reached, falls back to picking a region by hand, which is where the region list now lives.
+- The map card and the OpenStreetMap queries centre on the Home Assistant home location instead of
+  on whichever substation happened to come first in the list, which was central London when the
+  substation list was empty.
+- 300s is the default update interval, as the code has always said. The table here said 120s.
 
 ### 1.1.0
 

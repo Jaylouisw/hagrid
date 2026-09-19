@@ -7,6 +7,10 @@ PLATFORMS = ["sensor"]
 CONF_POSTCODE = "postcode"
 CONF_REGION_ID = "region_id"
 CONF_DNO = "dno"
+# True when the entry's region came from the Home Assistant home location rather than a region the
+# user picked by hand. Only those entries are re-resolved on startup, so a user who chose a region
+# deliberately does not have that choice overwritten by moving their HA installation.
+CONF_USE_HOME_LOCATION = "use_home_location"
 CONF_UPDATE_INTERVAL = "update_interval"
 CONF_SHOW_INFRASTRUCTURE = "show_infrastructure"
 CONF_SHOW_LIVE_FAULTS = "show_live_faults"
@@ -60,6 +64,10 @@ DEFAULT_OSM_RADIUS_KM = 10  # km radius for OSM queries
 
 # API Endpoints
 CARBON_INTENSITY_API = "https://api.carbonintensity.org.uk"
+# Reverse geocoding for Great Britain only: the Carbon Intensity API's regional endpoints are
+# postcode-based, and Home Assistant knows its latitude and longitude but not its postcode. Free,
+# keyless, Open Government Licence, same as every other source on the GB path.
+POSTCODES_IO_API = "https://api.postcodes.io"
 UKPN_API_BASE = "https://ukpowernetworks.opendatasoft.com/api/explore/v2.1"
 NESO_API_BASE = "https://api.neso.energy/api/3/action"
 NATIONAL_GRID_API_BASE = "https://connecteddata.nationalgrid.co.uk/api/3/action"

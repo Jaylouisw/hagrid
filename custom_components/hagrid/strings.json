@@ -2,23 +2,13 @@
     "config": {
         "step": {
             "user": {
-                "title": "Configure HAGrid",
-                "description": "Enter your UK postcode to get local grid data",
-                "data": {
-                    "postcode": "Postcode"
-                },
-                "data_description": {
-                    "postcode": "Your UK postcode (e.g., SW1A 1AA). Used to determine your DNO and carbon intensity region."
-                }
-            },
-            "region": {
-                "title": "Select Region",
-                "description": "Select your electricity region",
+                "title": "HAGrid",
+                "description": "HAGrid takes your grid region from the home location set in Home Assistant ({location}). If Home Assistant is not installed in Great Britain, or you want grid data for somewhere else, pick a region below.",
                 "data": {
                     "region_id": "Region"
                 },
                 "data_description": {
-                    "region_id": "Select the electricity region for carbon intensity data"
+                    "region_id": "Only used when the home location cannot be. Choosing one here keeps the region fixed even if the home location changes."
                 }
             },
             "confirm": {
@@ -57,8 +47,10 @@
             }
         },
         "error": {
-            "invalid_postcode": "Invalid UK postcode format",
-            "cannot_connect": "Unable to connect to grid data APIs",
+            "location_not_in_gb": "The Home Assistant home location is outside Great Britain, which is the only grid covered so far. Pick a region instead.",
+            "region_not_found": "No grid region matches the home location. Pick a region instead.",
+            "no_region_selected": "Pick a region",
+            "cannot_connect": "Could not reach the grid data services or the postcode lookup",
             "unknown": "An unexpected error occurred"
         },
         "abort": {
@@ -70,6 +62,7 @@
             "init": {
                 "title": "HAGrid Options",
                 "data": {
+                    "use_home_location": "Follow the Home Assistant home location",
                     "update_interval": "Update interval (seconds)",
                     "show_infrastructure": "Show infrastructure on map",
                     "show_live_faults": "Show live faults",
@@ -77,11 +70,12 @@
                     "osm_radius_km": "OSM data radius (km)"
                 },
                 "data_description": {
+                    "use_home_location": "Keep the grid region in step with the home location set in Home Assistant. Turn this off to keep the region chosen when the integration was added.",
                     "update_interval": "How often to refresh data from grid APIs",
                     "show_infrastructure": "Display substations and power lines on the map",
                     "show_live_faults": "Show active faults and outages",
                     "include_osm_data": "Fetch power infrastructure from OpenStreetMap Overpass API",
-                    "osm_radius_km": "Radius around your postcode to search for OSM power features"
+                    "osm_radius_km": "Radius around the home location to search for OSM power features"
                 }
             },
             "api_keys": {
