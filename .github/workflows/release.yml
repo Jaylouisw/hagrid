@@ -5,6 +5,7 @@ on:
     types: [published]
 
 permissions:
+  # Default to read; publish job elevates to contents:write only where required.
   contents: read
 
 jobs:
@@ -40,6 +41,7 @@ jobs:
         with:
           name: hagrid-release-package
       - name: Attach package to GitHub release
+        # v3.0.3
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64
         with:
           files: hagrid.zip

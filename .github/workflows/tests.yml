@@ -23,6 +23,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Run HACS validation
+        # 22.5.0
         uses: hacs/action@d556e736723344f83838d08488c983a15381059a
         with:
           category: integration
@@ -34,6 +35,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Run hassfest
+        # home-assistant/actions commit 58bff37
         uses: home-assistant/actions/hassfest@58bff37c8947f690ace498be413a9b78d6f30f93
 
   tests:
