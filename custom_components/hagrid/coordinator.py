@@ -23,6 +23,7 @@ from .api import (
     EnerginetClient,
     EnergyDashboardClient,
     ENTSOEClient,
+    GeocoderUnavailable,
     # Additional open API clients
     FingridClient,
     IESOClient,
@@ -31,6 +32,7 @@ from .api import (
     OpenElectricityClient,
     OSMPowerFeature,
     OverpassClient,
+    PostcodesIoClient,
     PowerLine,
     PSEClient,
     REEEsiosClient,
@@ -78,6 +80,7 @@ from .const import (
     CONF_SSEN_NERDA_API_KEY,
     CONF_UPDATE_INTERVAL,
     CONF_US_ISO,
+    CONF_USE_HOME_LOCATION,
     CONF_WATTTIME_PASSWORD,
     CONF_WATTTIME_USERNAME,
     DEFAULT_INCLUDE_OSM_DATA,
@@ -104,6 +107,10 @@ class HAGridCoordinator(DataUpdateCoordinator):
         self.entry = entry
         self.postcode: str | None = entry.data.get(CONF_POSTCODE)
         self.region_id: int | None = entry.data.get(CONF_REGION_ID)
+        # Set by the config flow when the region came from the Home Assistant home location rather
+        # than a region the user chose. Absent on entries created before this existed, and read as
+        # False so those keep the region they were set up with.
+        self.use_home_location: bool = entry.options.get(CONF_USE_HOME_LOCATION, False)
         self.show_infrastructure: bool = entry.options.get(
             CONF_SHOW_INFRASTRUCTURE, DEFAULT_SHOW_INFRASTRUCTURE
         )
@@ -205,6 +212,49 @@ class HAGridCoordinator(DataUpdateCoordinator):
         self._location_lat: float | None = None
         self._location_lon: float | None = None
 
+    async def _async_resolve_home_location(self) -> None:
+        """Refresh the postcode and grid region from the Home Assistant home location.
+
+        Best effort: an unreachable lookup service or a location outside Great Britain leaves the
+        stored postcode in place, because data for the wrong-but-known region beats no data at all
+        when the alternative is failing to start.
+        """
+        if not self._session or not self.carbon_client:
+            return
+
+        latitude = self.hass.config.latitude
+        longitude = self.hass.config.longitude
+        try:
+            location = await PostcodesIoClient(self._session).reverse_geocode(latitude, longitude)
+        except GeocoderUnavailable as err:
+            _LOGGER.warning(
+                "Could not look up a postcode for the home location %.4f, %.4f: %s",
+                latitude,
+                longitude,
+                err,
+            )
+            return
+
+        if location is None:
+            _LOGGER.warning(
+                "The Home Assistant home location (%.4f, %.4f) is not in Great Britain; "
+                "keeping postcode %s",
+                latitude,
+                longitude,
+                self.postcode,
+            )
+            return
+
+        self.postcode = location.outcode
+        regional = await self.carbon_client.get_regional_data(postcode=location.outcode)
+        if regional:
+            self.region_id = regional.region_id
+            _LOGGER.debug(
+                "Using %s (%s), from the Home Assistant home location",
+                location.outcode,
+                regional.short_name,
+            )
+
     async def _async_setup(self) -> None:
         """Set up the coordinator."""
         self._session = aiohttp.ClientSession()
@@ -215,6 +265,12 @@ class HAGridCoordinator(DataUpdateCoordinator):
         self.overpass_client = OverpassClient(self._session)
         self.neso_client = NESOClient(self._session)
         self.elexon_client = ElexonBMRSClient(self._session)  # Free, no API key
+
+        # An address can change, and a stale grid region is worst exactly when it has: moving house
+        # is when the old postcode is most wrong. Entries that follow the home location are therefore
+        # re-resolved at every setup rather than frozen at the moment they were created.
+        if self.use_home_location:
+            await self._async_resolve_home_location()
 
         # API key-gated clients
         if self._national_grid_api_key:
@@ -1024,12 +1080,13 @@ class HAGridCoordinator(DataUpdateCoordinator):
         if not self.overpass_client:
             return
 
-        # Get location from first substation or use approximate UK center
-        lat, lon = 51.5074, -0.1278  # Default to London
-        if self._cached_substations:
-            first_sub = self._cached_substations[0]
-            if first_sub.latitude and first_sub.longitude:
-                lat, lon = first_sub.latitude, first_sub.longitude
+        # The Home Assistant home location, which is where the user actually is. This used to take
+        # the coordinates of whichever substation happened to be first in the list, and fell back to
+        # central London when that list was empty, so the map could be centred on a substation forty
+        # miles away or on London.
+        lat = self.hass.config.latitude
+        lon = self.hass.config.longitude
+        self._location_lat, self._location_lon = lat, lon
 
         try:
             osm_features = await self.overpass_client.get_power_infrastructure(

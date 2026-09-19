@@ -11,7 +11,7 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import selector
 
-from .api import CarbonIntensityClient
+from .api import CarbonIntensityClient, GeocoderUnavailable, PostcodesIoClient
 from .const import (
     CARBON_REGIONS,
     CONF_AESO_API_KEY,
@@ -44,6 +44,7 @@ from .const import (
     CONF_SHOW_LIVE_FAULTS,
     CONF_SSEN_NERDA_API_KEY,
     CONF_UPDATE_INTERVAL,
+    CONF_USE_HOME_LOCATION,
     CONF_WATTTIME_ENABLED,
     CONF_WATTTIME_PASSWORD,
     CONF_WATTTIME_USERNAME,
@@ -85,6 +86,9 @@ class HAGridConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self._postcode: str | None = None
         self._region_id: int | None = None
         self._region_info: dict[str, Any] = {}
+        self._use_home_location: bool = False
+        self._resolution_error: str | None = None
+        self._home_location: str = "unknown"
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
@@ -93,86 +97,97 @@ class HAGridConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors: dict[str, str] = {}
 
         if user_input is not None:
-            postcode = user_input.get(CONF_POSTCODE, "").strip().upper()
-
-            if postcode:
-                # Extract outward code (first part of postcode)
-                outward = postcode.split()[0] if " " in postcode else postcode[:4].rstrip()
-
-                try:
-                    self._region_info = await validate_postcode(self.hass, outward)
-                    self._postcode = outward
-                    self._region_id = self._region_info.get("region_id")
-
-                    # Check for existing entry with same postcode
-                    await self.async_set_unique_id(f"hagrid_{outward}")
-                    self._abort_if_unique_id_configured()
-
-                    return await self.async_step_confirm()
-
-                except ValueError:
-                    errors["base"] = "invalid_postcode"
-                except Exception as e:
-                    _LOGGER.error("Error validating postcode: %s", e)
-                    errors["base"] = "cannot_connect"
+            # A region was picked by hand instead.
+            region_id = user_input.get(CONF_REGION_ID)
+            if not region_id:
+                errors["base"] = "no_region_selected"
             else:
-                # No postcode - use region selector
-                return await self.async_step_region()
+                self._region_id = int(region_id)
+                self._use_home_location = False
+                await self.async_set_unique_id(f"hagrid_region_{self._region_id}")
+                self._abort_if_unique_id_configured()
+                self._region_info = {
+                    "region_id": self._region_id,
+                    "region_name": CARBON_REGIONS.get(self._region_id, "Unknown"),
+                    "dno": "Unknown",
+                }
+                return await self.async_step_confirm()
+        elif await self._async_resolve_home_location():
+            return await self.async_step_confirm()
+        else:
+            errors["base"] = self._resolution_error or "cannot_connect"
 
         return self.async_show_form(
             step_id="user",
             data_schema=vol.Schema({
-                vol.Optional(CONF_POSTCODE): str,
-            }),
-            errors=errors,
-            description_placeholders={
-                "example": "SW1A or RG10",
-            },
-        )
-
-    async def async_step_region(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
-        """Handle region selection step."""
-        errors: dict[str, str] = {}
-
-        if user_input is not None:
-            self._region_id = user_input.get(CONF_REGION_ID)
-
-            if self._region_id:
-                region_name = CARBON_REGIONS.get(self._region_id, "Unknown")
-
-                await self.async_set_unique_id(f"hagrid_region_{self._region_id}")
-                self._abort_if_unique_id_configured()
-
-                self._region_info = {
-                    "region_id": self._region_id,
-                    "region_name": region_name,
-                }
-
-                return await self.async_step_confirm()
-            else:
-                errors["base"] = "no_region_selected"
-
-        # Build region options
-        region_options = [
-            selector.SelectOptionDict(value=str(k), label=v)
-            for k, v in CARBON_REGIONS.items()
-            if k <= 14  # Exclude aggregate regions (England, Scotland, Wales)
-        ]
-
-        return self.async_show_form(
-            step_id="region",
-            data_schema=vol.Schema({
                 vol.Required(CONF_REGION_ID): selector.SelectSelector(
                     selector.SelectSelectorConfig(
-                        options=region_options,
+                        options=[
+                            selector.SelectOptionDict(value=str(k), label=v)
+                            for k, v in CARBON_REGIONS.items()
+                            if k <= 14  # Exclude aggregate regions (England, Scotland, Wales)
+                        ],
                         mode=selector.SelectSelectorMode.DROPDOWN,
                     )
                 ),
             }),
             errors=errors,
+            description_placeholders={"location": self._home_location},
         )
+
+    async def _async_resolve_home_location(self) -> bool:
+        """Work out the grid region from the Home Assistant home location.
+
+        Returns True when the flow can carry on, or False with self._resolution_error set to an error
+        key for the form. It never raises: a config flow that raises leaves the user watching a
+        spinner instead of reading a message.
+        """
+        latitude = self.hass.config.latitude
+        longitude = self.hass.config.longitude
+        self._home_location = f"{latitude:.4f}, {longitude:.4f}"
+
+        try:
+            async with aiohttp.ClientSession() as session:
+                location = await PostcodesIoClient(session).reverse_geocode(latitude, longitude)
+        except GeocoderUnavailable as err:
+            _LOGGER.error("Postcode lookup failed for %s: %s", self._home_location, err)
+            self._resolution_error = "cannot_connect"
+            return False
+
+        if location is None or location.country == "Northern Ireland":
+            # postcodes.io answers with a null result outside Great Britain. Northern Ireland it does
+            # resolve, but the Carbon Intensity API has no region for it: a BT postcode comes back
+            # HTTP 400 "No postcode match can be found" (measured 2026-09-19), so both cases end up in
+            # the same place, which is the region picker with an explanation.
+            _LOGGER.info(
+                "Home Assistant home location %s is not in a covered region; asking for one",
+                self._home_location,
+            )
+            self._resolution_error = "location_not_in_gb"
+            return False
+
+        try:
+            self._region_info = await validate_postcode(self.hass, location.outcode)
+        except ValueError:
+            self._resolution_error = "region_not_found"
+            return False
+        except Exception as err:
+            _LOGGER.error("Could not resolve a region for %s: %s", location.outcode, err)
+            self._resolution_error = "cannot_connect"
+            return False
+
+        self._postcode = location.outcode
+        self._region_id = self._region_info.get("region_id")
+        self._use_home_location = True
+        await self.async_set_unique_id(f"hagrid_{location.outcode}")
+        self._abort_if_unique_id_configured()
+        _LOGGER.info(
+            "Took %s (%s) from the Home Assistant home location %s",
+            location.outcode,
+            self._region_info.get("region_name", "unknown region"),
+            self._home_location,
+        )
+        return True
 
     async def async_step_confirm(
         self, user_input: dict[str, Any] | None = None
@@ -220,6 +235,7 @@ class HAGridConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     CONF_WATTTIME_ENABLED: user_input.get(CONF_WATTTIME_ENABLED, False),
                 },
                 options={
+                    CONF_USE_HOME_LOCATION: self._use_home_location,
                     CONF_UPDATE_INTERVAL: DEFAULT_UPDATE_INTERVAL,
                     CONF_SHOW_INFRASTRUCTURE: DEFAULT_SHOW_INFRASTRUCTURE,
                     CONF_SHOW_LIVE_FAULTS: DEFAULT_SHOW_LIVE_FAULTS,
@@ -317,6 +333,10 @@ class HAGridOptionsFlow(config_entries.OptionsFlow):
         return self.async_show_form(
             step_id="init",
             data_schema=vol.Schema({
+                vol.Required(
+                    CONF_USE_HOME_LOCATION,
+                    default=self.config_entry.options.get(CONF_USE_HOME_LOCATION, False),
+                ): bool,
                 vol.Required(
                     CONF_UPDATE_INTERVAL,
                     default=self.config_entry.options.get(
