@@ -32,6 +32,8 @@ from .const import (
     NESO_DATASETS,
     NGED_DATASETS,
     NGED_GSP_DATASETS,
+    NGED_LICENCE_AREAS,
+    NGED_REGION_IDS,
     OPENELECTRICITY_API_BASE,
     OVERPASS_API,
     POSTCODES_IO_API,
@@ -645,6 +647,31 @@ class CarbonIntensityClient(GridAPIClient):
         return forecasts
 
 
+def _parse_datetime(value: str | None) -> datetime | None:
+    """A timestamp from one of the portals, or None when it is absent or unparseable.
+
+    None rather than a substitute: a fabricated start time is worse than a missing one, and the
+    LiveFault fields are optional precisely so this can say "not published".
+    """
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except ValueError:
+        _LOGGER.debug("Unparseable timestamp from a grid API: %r", value)
+        return None
+
+
+def nged_licence_area(dno: str | None, region_id: int | None) -> str | None:
+    """Which NGED licence area an entry falls in, or None when NGED does not cover it.
+
+    The DNO string is what the Carbon Intensity API called it, and the region id is the fallback for
+    an entry whose DNO was never resolved. Asking the wrong operator for power cuts is worse than
+    asking nobody, so anything unrecognised returns None and the caller stays with UKPN.
+    """
+    return NGED_LICENCE_AREAS.get(dno or "") or NGED_REGION_IDS.get(region_id or -1)
+
+
 class UKPNClient(GridAPIClient):
     """Client for UK Power Networks Open Data API."""
 
@@ -704,28 +731,49 @@ class UKPNClient(GridAPIClient):
         if not data or "results" not in data:
             return []
 
-        faults = []
+        faults: list[LiveFault] = []
         for record in data["results"]:
             fields = record.get("record", {}).get("fields", record)
-            try:
-                geo = fields.get("geo_point_2d", {})
-                faults.append(LiveFault(
-                    id=fields.get("incidentreference", str(record.get("record", {}).get("id", ""))),
-                    incident_type=fields.get("incidenttype", "unknown"),
-                    status=fields.get("status", "unknown"),
-                    postcode_area=fields.get("postcodearea", ""),
-                    estimated_customers=int(fields.get("estimatedrestoredcustomers", 0)),
-                    start_time=datetime.fromisoformat(fields.get("creationdatetime", "").replace("Z", "+00:00")) if fields.get("creationdatetime") else datetime.now(),
-                    estimated_restore_time=datetime.fromisoformat(fields.get("estimatedrestorationdate", "").replace("Z", "+00:00")) if fields.get("estimatedrestorationdate") else None,
-                    latitude=geo.get("lat") if geo else None,
-                    longitude=geo.get("lon") if geo else None,
-                    description=fields.get("statusdescription"),
-                ))
-            except Exception as e:
-                _LOGGER.debug("Error parsing fault record: %s", e)
-                continue
+            fault = self._parse_ukpn_fault(fields)
+            if fault is not None:
+                faults.append(fault)
 
         return faults
+
+    @staticmethod
+    def _parse_ukpn_fault(fields: dict) -> LiveFault | None:
+        """One UKPN incident, read under the field names this dataset actually publishes.
+
+        Four of them used to be read under names that do not exist here - geo_point_2d (it is
+        geopoint), status, postcodearea and estimatedrestoredcustomers - so every UKPN fault arrived
+        with no coordinates, no postcode area, no affected customers and the status "unknown", while
+        the numeric incidenttype stood in for the type text. Verified against the live dataset
+        2026-09-19.
+        """
+        reference = fields.get("incidentreference")
+        if not reference:
+            return None
+
+        geo = fields.get("geopoint") or {}
+        incident = str(fields.get("incidenttypename") or fields.get("powercuttype") or "unknown")
+        try:
+            customers = int(fields.get("nocustomeraffected") or 0)
+        except (TypeError, ValueError):
+            customers = 0
+
+        return LiveFault(
+            id=str(reference),
+            incident_type=incident,
+            status=incident,
+            postcode_area=str(fields.get("postcodesaffected") or "").split(";")[0],
+            estimated_customers=customers,
+            start_time=_parse_datetime(fields.get("creationdatetime")),
+            estimated_restore_time=_parse_datetime(fields.get("estimatedrestorationdate")),
+            latitude=geo.get("lat"),
+            longitude=geo.get("lon"),
+            description=fields.get("incidentcategorycustomerfriendlydescription"),
+            planned="planned" in incident.lower() or bool(fields.get("planneddate")),
+        )
 
     async def get_grid_primary_substations(
         self,

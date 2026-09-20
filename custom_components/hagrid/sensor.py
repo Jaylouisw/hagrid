@@ -296,9 +296,10 @@ class HAGridLiveFaultsSensor(HAGridBaseSensor):
 
         faults = self.coordinator.data.get("live_faults", [])
 
-        # Group by type
-        planned = sum(1 for f in faults if f.incident_type == "planned")
-        unplanned = sum(1 for f in faults if f.incident_type == "unplanned")
+        # planned is carried by each fault rather than inferred from the type text, which never
+        # matched: the type field holds the operator's own wording, not "planned" or "unplanned".
+        planned = sum(1 for f in faults if f.planned)
+        unplanned = sum(1 for f in faults if not f.planned)
 
         # Total affected customers
         total_customers = sum(f.estimated_customers for f in faults)
@@ -311,8 +312,11 @@ class HAGridLiveFaultsSensor(HAGridBaseSensor):
                 {
                     "id": f.id,
                     "type": f.incident_type,
+                    # UKPN publishes a postcode area, NGED publishes a licence area.
                     "postcode": f.postcode_area,
+                    "area": f.area,
                     "customers": f.estimated_customers,
+                    "planned": f.planned,
                 }
                 for f in faults[:10]  # Limit to first 10
             ],
