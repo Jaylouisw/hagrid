@@ -1004,12 +1004,22 @@ class OverpassClient:
         self.session = session
         self.base_url = OVERPASS_API
 
+    # Overpass refuses a client that does not identify itself, and aiohttp's default user agent is
+    # one of the ones it refuses. Every OpenStreetMap query this integration has ever made came back
+    # HTTP 406, which is why no OSM feature has ever reached the map. Measured 2026-09-20: the same
+    # query answers 406 with the default agent and 200 with this one.
+    HEADERS: ClassVar[dict[str, str]] = {
+        "User-Agent": "HAGrid/1.1 (Home Assistant integration; +https://github.com/jaylouisw/hagrid)",
+        "Accept": "application/json",
+    }
+
     async def _query(self, query: str) -> dict | None:
         """Execute an Overpass query."""
         try:
             async with self.session.post(
                 self.base_url,
                 data={"data": query},
+                headers=self.HEADERS,
                 timeout=aiohttp.ClientTimeout(total=60),
             ) as response:
                 if response.status == 200:

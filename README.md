@@ -143,11 +143,17 @@ unverified — treat the GB path as what works.
 
 ### Which network operators are covered
 
-| Your network operator | Live power cuts | Substations, lines and the map |
+| Your network operator | Live power cuts | Substations and lines on the map |
 |---|---|---|
-| UK Power Networks (London, Eastern, South Eastern) | yes, keyless | yes, from UKPN's open data |
-| NGED (East Midlands, West Midlands, South West, South Wales) | yes, keyless | substation **locations** need your own registered key; the map draws from OpenStreetMap either way |
-| SSEN, ENWL, Northern Powergrid, SP Energy | not yet | not yet |
+| UK Power Networks (London, Eastern, South Eastern) | yes, keyless | UKPN's own open data, plus OpenStreetMap |
+| NGED (East Midlands, West Midlands, South West, South Wales) | yes, keyless | OpenStreetMap, plus NGED's own locations if you register for a key |
+| SSEN, ENWL, Northern Powergrid, SP Energy | not yet | OpenStreetMap |
+
+The map does not depend on your network operator at all. It is drawn from OpenStreetMap around the
+home location set in Home Assistant, at whatever radius you choose, and OpenStreetMap covers the whole
+country: measured 2026-09-20, a 10 km radius on Birmingham returns 10,090 power features, of which
+1,709 are substations, 413 power lines, 394 towers and 89 minor lines. It is community-mapped, so
+treat it as indicative rather than authoritative, and set the radius to something sensible.
 
 Both fault feeds are open data, so nobody needs an account for the power cuts. NGED restricts its
 substation locations and its generation capacity register to registered users: that restriction is
