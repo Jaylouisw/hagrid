@@ -30,6 +30,8 @@ from .const import (
     NATIONAL_GRID_DATASETS,
     NESO_API_BASE,
     NESO_DATASETS,
+    NGED_DATASETS,
+    NGED_GSP_DATASETS,
     OPENELECTRICITY_API_BASE,
     OVERPASS_API,
     POSTCODES_IO_API,
@@ -110,11 +112,16 @@ class LiveFault:
     status: str
     postcode_area: str
     estimated_customers: int
-    start_time: datetime
-    estimated_restore_time: datetime | None
+    # Both times are optional because not every DNO publishes them, and a field with no default may
+    # not follow one that has a default: that ordering is what stopped 1.0.0 importing at all.
+    start_time: datetime | None = None
+    estimated_restore_time: datetime | None = None
     latitude: float | None = None
     longitude: float | None = None
     description: str | None = None
+    # NGED publishes a licence area rather than a postcode area, and states whether the cut is planned.
+    area: str | None = None
+    planned: bool = False
 
 
 @dataclass
@@ -322,6 +329,10 @@ class GridAPIClient(ABC):
 
 class GeocoderUnavailable(Exception):
     """The reverse geocode lookup could not be completed."""
+
+
+class RegisteredKeyRequired(Exception):
+    """The dataset is restricted to registered users, so the user's own key is needed."""
 
 
 @dataclass
@@ -1159,8 +1170,84 @@ class NESOClient:
         return data.get("result", [])
 
 
-class NationalGridClient:
-    """Client for National Grid Connected Data API (CKAN)."""
+class NGEDLiveDataMixin:
+    """The parts of the NGED portal that are open data.
+
+    Icebreaker One sensitivity class IB1-O: full open access, under an open data license, free to use,
+    by anyone, for any purpose. Measured 2026-09-19 answering with no credential of any kind. The
+    static network layers on the same portal are a different matter: they answer 403 "Resource access
+    restricted to registered users", which is the mitigation their Data Sharing Assessment relies on,
+    so they stay behind the user's own key.
+    """
+
+    async def get_nged_live_faults(self, licence_area: str | None = None) -> list[LiveFault]:
+        """Live and planned power cuts across NGED's four licence areas.
+
+        The package carries two resources in different shapes: the detailed one names the licence area
+        per record, the summary one calls the same thing Region. Both are normalised here so that
+        whichever the portal has populated, the caller sees the same fields. Neither publishes
+        coordinates, so these cannot be placed on the map individually.
+        """
+        records: list[dict] = []
+        for wanted in ("detailed", "cuts"):
+            try:
+                records = await self._datastore_search(
+                    NGED_DATASETS["live_power_cuts"], name=wanted, limit=200
+                )
+            except RegisteredKeyRequired:
+                raise
+            if records:
+                break
+
+        faults = [fault for fault in (self._parse_nged_fault(r) for r in records) if fault]
+        if licence_area:
+            faults = [f for f in faults if (f.area or "").lower() == licence_area.lower()]
+        return faults
+
+    async def get_nged_live_data(self, licence_area: str) -> list[dict]:
+        """Aggregate demand and generation for one licence area. Open data, no key."""
+        return await self._datastore_search(
+            NGED_DATASETS["live_data"], name=licence_area, limit=200
+        )
+
+    async def get_nged_gsp_data(self, licence_area: str, limit: int = 200) -> list[dict]:
+        """Live per-Grid-Supply-Point flows for one licence area. Open data, no key."""
+        package_id = NGED_GSP_DATASETS.get(licence_area)
+        if not package_id:
+            return []
+        return await self._datastore_search(package_id, limit=limit)
+
+    @staticmethod
+    def _parse_nged_fault(record: dict) -> LiveFault | None:
+        """One NGED power-cut record, in either of the two shapes the portal publishes."""
+        # The two resources differ only in case and spacing: fault_id against "Incident ID",
+        # licence_area against "Region", confirmed_off against "Confirmed Off". Normalising the keys
+        # is what lets one parser read both, and the customers field is the one that gets missed.
+        lowered = {
+            str(key).strip().lower().replace(" ", "_"): value for key, value in record.items()
+        }
+        fault_id = lowered.get("fault_id") or lowered.get("incident_id")
+        if fault_id is None:
+            return None
+        try:
+            customers = int(float(lowered.get("confirmed_off") or 0))
+        except (TypeError, ValueError):
+            customers = 0
+        planned = str(lowered.get("planned")).strip().lower() == "true"
+        return LiveFault(
+            id=str(fault_id),
+            incident_type=str(lowered.get("category") or "unknown"),
+            status=str(lowered.get("status") or "unknown"),
+            postcode_area="",  # not published per incident
+            estimated_customers=customers,
+            description=str(lowered.get("category") or "") or None,
+            area=str(lowered.get("licence_area") or lowered.get("region") or "") or None,
+            planned=planned,
+        )
+
+
+class NationalGridClient(NGEDLiveDataMixin):
+    """Client for the National Grid Electricity Distribution portal (CKAN)."""
 
     def __init__(
         self,
@@ -1172,8 +1259,16 @@ class NationalGridClient:
         self.base_url = NATIONAL_GRID_API_BASE
         self.api_key = api_key
 
-    async def _request(self, endpoint: str, params: dict | None = None) -> dict | None:
-        """Make a request to the National Grid API."""
+    async def _request_raw(
+        self, endpoint: str, params: dict | None = None
+    ) -> tuple[int | None, dict | None]:
+        """Make a request and keep the status code alongside the body.
+
+        The status is the only thing that separates the three outcomes on this portal: 403 means the
+        dataset is restricted to registered users, 404 means the resource is not a queryable table,
+        and None means the request never completed. Collapsing them into one None is what made the
+        old code silently return nothing for all three.
+        """
         url = f"{self.base_url}/{endpoint}"
         headers = {}
         if self.api_key:
@@ -1182,12 +1277,59 @@ class NationalGridClient:
         try:
             async with self.session.get(url, params=params, headers=headers) as response:
                 if response.status == 200:
-                    return await response.json()
-                _LOGGER.error("National Grid API error: %s", response.status)
-                return None
+                    return response.status, await response.json()
+                _LOGGER.error("National Grid API error: %s for %s", response.status, endpoint)
+                return response.status, None
         except Exception as e:
             _LOGGER.error("National Grid API request failed: %s", e)
-            return None
+            return None, None
+
+    async def _request(self, endpoint: str, params: dict | None = None) -> dict | None:
+        """Make a request to the National Grid API, discarding the status."""
+        _, data = await self._request_raw(endpoint, params)
+        return data
+
+    async def _datastore_search(
+        self,
+        package_id: str,
+        *,
+        name: str | None = None,
+        limit: int = 100,
+    ) -> list[dict]:
+        """Query a package's datastore, choosing which resource to ask.
+
+        Selection cannot use the datastore_active flag. Measured 2026-09-19: thirteen of the fourteen
+        East Midlands GSP resources are flagged false and answer queries anyway, while the genuinely
+        non-tabular entries answer 404. So candidates come from the format, are ordered by how well
+        their name matches, and a 404 moves on to the next one rather than failing the whole call.
+        """
+        pkg = await self.get_package_info(package_id)
+        if not pkg:
+            return []
+
+        candidates = [
+            resource
+            for resource in pkg.get("resources", [])
+            if (resource.get("format") or "").upper() == "CSV"
+        ]
+        if name:
+            wanted = name.lower()
+            candidates.sort(key=lambda r: wanted not in (r.get("name") or "").lower())
+        if not candidates:
+            _LOGGER.debug("No CSV resources in %s", package_id)
+            return []
+
+        for resource in candidates:
+            status, data = await self._request_raw(
+                "datastore_search", {"resource_id": resource["id"], "limit": limit}
+            )
+            if status == 403:
+                raise RegisteredKeyRequired(f"{package_id} is restricted to registered users")
+            if status == 200 and data and data.get("success"):
+                return data.get("result", {}).get("records", [])
+
+        _LOGGER.debug("No datastore resource answered for %s", package_id)
+        return []
 
     async def get_package_info(self, package_id: str) -> dict | None:
         """Get information about a dataset package."""
@@ -1197,58 +1339,30 @@ class NationalGridClient:
         return data.get("result")
 
     async def get_embedded_capacity_register(self, limit: int = 100) -> list[dict]:
-        """Get embedded capacity register data."""
-        pkg = await self.get_package_info(NATIONAL_GRID_DATASETS["embedded_capacity_register"])
-        if not pkg or not pkg.get("resources"):
-            return []
-
-        # Get the latest resource
-        resources = pkg.get("resources", [])
-        if not resources:
-            return []
-
-        latest_resource = resources[-1]
-        resource_id = latest_resource.get("id")
-
-        params = {
-            "resource_id": resource_id,
-            "limit": limit,
-        }
-        data = await self._request("datastore_search", params)
-        if not data or not data.get("success"):
-            return []
-        return data.get("result", {}).get("records", [])
+        """Get embedded capacity register data. Open data, no key needed."""
+        return await self._datastore_search(
+            NATIONAL_GRID_DATASETS["embedded_capacity_register"], name="ECR", limit=limit
+        )
 
     async def get_primary_substations(self, limit: int = 100) -> list[Substation]:
-        """Get primary substation locations."""
-        pkg = await self.get_package_info(NATIONAL_GRID_DATASETS["primary_substations"])
-        if not pkg or not pkg.get("resources"):
-            return []
+        """Get primary substation locations.
 
-        resources = pkg.get("resources", [])
-        if not resources:
-            return []
-
-        latest_resource = resources[-1]
-        resource_id = latest_resource.get("id")
-
-        params = {
-            "resource_id": resource_id,
-            "limit": limit,
-        }
-        data = await self._request("datastore_search", params)
-        if not data or not data.get("success"):
-            return []
+        Restricted to registered users, so this raises RegisteredKeyRequired rather than returning an
+        empty list and leaving the caller to guess why there are no substations.
+        """
+        records = await self._datastore_search(
+            NATIONAL_GRID_DATASETS["primary_substations"], limit=limit
+        )
 
         substations: list[Substation] = []
-        for record in data.get("result", {}).get("records", []):
+        for record in records:
             try:
-                # Convert easting/northing to lat/lon (simplified)
-                # For accurate conversion, use pyproj or similar
                 easting = float(record.get("Easting", 0))
                 northing = float(record.get("Northing", 0))
 
-                # Rough approximation for UK (OSGB36 to WGS84)
+                # Not the OSGB36 to WGS84 conversion the comment here used to claim. Scaling eastings
+                # and northings linearly puts these on the map kilometres out, which is worse than no
+                # marker at all. Tracked separately; do not build on it.
                 lat = 49.0 + (northing / 111000)
                 lon = -8.0 + (easting / 80000)
 

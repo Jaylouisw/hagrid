@@ -518,6 +518,39 @@ NATIONAL_GRID_DATASETS = {
     "live_data": "live-data",
 }
 
+# National Grid Electricity Distribution (NGED), the DNO for the Midlands, South Wales and the South
+# West. Same CKAN portal as NATIONAL_GRID_API_BASE above. Its live layer is open data (Icebreaker One
+# sensitivity class IB1-O: "full open access, under an open data license, free to use, by anyone, for
+# any purpose") and answers without any credential. Its static network layers - the substation
+# locations and the generation capacity register - answer HTTP 403 "Resource access restricted to
+# registered users" and are meant to stay that way: each carries a Data Sharing Assessment whose only
+# stated mitigation is that restriction.
+NGED_API_BASE = "https://connecteddata.nationalgrid.co.uk/api/3/action"
+
+# The Carbon Intensity API still names this DNO after its previous owner, Western Power Distribution,
+# so the licence area a user belongs to has to be read out of those strings.
+NGED_LICENCE_AREAS = {
+    "WPD East Midlands": "East Midlands",
+    "WPD West Midlands": "West Midlands",
+    "WPD South West": "South West",
+    "WPD South Wales": "South Wales",
+}
+
+NGED_DATASETS = {
+    # Live and planned power cuts, with affected-customer counts, for all four licence areas at once.
+    "live_power_cuts": "live-power-cuts",
+    # Aggregate demand and generation per licence area.
+    "live_data": "live-data",
+}
+
+# One package per licence area, each holding one CSV per Grid Supply Point.
+NGED_GSP_DATASETS = {
+    "East Midlands": "live-gsp-data-east-midlands",
+    "West Midlands": "live-gsp-data-west-midlands",
+    "South West": "live-gsp-data-south-west",
+    "South Wales": "live-gsp-data-south-wales",
+}
+
 # OpenStreetMap Power Infrastructure Tags
 OSM_POWER_TAGS = {
     "substation": "power=substation",
