@@ -27,6 +27,7 @@ from .api import (
     FingridClient,
     GeocoderUnavailable,
     IESOClient,
+    LiveFault,
     NationalGridClient,
     NESOClient,
     OpenElectricityClient,
@@ -36,6 +37,7 @@ from .api import (
     PowerLine,
     PSEClient,
     REEEsiosClient,
+    RegisteredKeyRequired,
     # Data classes
     RTEClient,
     SMARDClient,
@@ -45,6 +47,7 @@ from .api import (
     TranspowerClient,
     UKPNClient,
     WattTimeClient,
+    nged_licence_area,
 )
 from .const import (
     CONF_AESO_API_KEY,
@@ -52,6 +55,7 @@ from .const import (
     CONF_BELGIUM_ENABLED,
     CONF_CANADA_REGION,
     CONF_DENMARK_ENABLED,
+    CONF_DNO,
     CONF_EIA_API_KEY,
     CONF_EIA_REGION,
     # Global API configuration
@@ -107,6 +111,9 @@ class HAGridCoordinator(DataUpdateCoordinator):
         self.entry = entry
         self.postcode: str | None = entry.data.get(CONF_POSTCODE)
         self.region_id: int | None = entry.data.get(CONF_REGION_ID)
+        # The DNO string from the config flow's lookup, which is how the right network operator for
+        # live faults is chosen. Absent on entries created before it was stored.
+        self.dno: str | None = entry.data.get(CONF_DNO)
         # Set by the config flow when the region came from the Home Assistant home location rather
         # than a region the user chose. Absent on entries created before this existed, and read as
         # False so those keep the region they were set up with.
@@ -272,11 +279,11 @@ class HAGridCoordinator(DataUpdateCoordinator):
         if self.use_home_location:
             await self._async_resolve_home_location()
 
-        # API key-gated clients
-        if self._national_grid_api_key:
-            self.national_grid_client = NationalGridClient(
-                self._session, self._national_grid_api_key
-            )
+        # Built whether or not a key was supplied: NGED's live layer is open data and needs none,
+        # while its substation layers answer 403 without one and say so rather than going quiet.
+        self.national_grid_client = NationalGridClient(
+            self._session, self._national_grid_api_key or None
+        )
         if self._ssen_nerda_api_key:
             self.ssen_client = SSENNerdaClient(
                 self._session, self._ssen_nerda_api_key
@@ -461,7 +468,7 @@ class HAGridCoordinator(DataUpdateCoordinator):
 
             # Get live faults if enabled
             if self.show_live_faults:
-                data["live_faults"] = await self.ukpn_client.get_live_faults(limit=50)
+                data["live_faults"] = await self._async_live_faults()
 
             # Get infrastructure data (cached, less frequent updates)
             if self.show_infrastructure:
@@ -484,6 +491,26 @@ class HAGridCoordinator(DataUpdateCoordinator):
         except Exception as e:
             _LOGGER.error("Error fetching HAGrid data: %s", e)
             raise UpdateFailed(f"Error fetching data: {e}") from e
+
+    async def _async_live_faults(self) -> list[LiveFault]:
+        """Live power cuts from whichever network operator covers this entry.
+
+        Both UKPN's and NGED's fault layers are open data and need no API key, so this is the one part
+        of the map that works for either. Which to ask is decided from the DNO the config flow already
+        resolved, with the carbon intensity region id as the fallback for an entry that chose a region
+        by hand. Nothing recognised stays with UKPN rather than guessing.
+        """
+        licence_area = nged_licence_area(self.dno, self.region_id)
+        if licence_area and self.national_grid_client:
+            try:
+                return await self.national_grid_client.get_nged_live_faults(licence_area)
+            except RegisteredKeyRequired:
+                # Not expected for the fault layer, which is open data. Falling through beats losing
+                # the sensor entirely if the portal changes its mind.
+                _LOGGER.warning("NGED live faults are no longer readable without a key")
+        if self.ukpn_client:
+            return await self.ukpn_client.get_live_faults(limit=50)
+        return []
 
     async def _fetch_additional_data(self, data: dict[str, Any]) -> None:
         """Fetch data from additional API sources."""
@@ -615,8 +642,16 @@ class HAGridCoordinator(DataUpdateCoordinator):
     async def _fetch_national_grid_data(self, data: dict[str, Any]) -> None:
         """Fetch National Grid ECR data."""
         try:
-            if self.national_grid_client:
-                substations = await self.national_grid_client.get_primary_substations()
+            # Only worth asking with a key: without one this dataset answers 403, which is the
+            # restriction its Data Sharing Assessment relies on.
+            if self.national_grid_client and self._national_grid_api_key:
+                try:
+                    substations = await self.national_grid_client.get_primary_substations()
+                except RegisteredKeyRequired:
+                    _LOGGER.info(
+                        "NGED substation locations need the user's own registered API key; skipping"
+                    )
+                    substations = []
                 data["national_grid_data"] = {
                     "substations": substations,
                 }

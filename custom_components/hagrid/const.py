@@ -536,6 +536,17 @@ NGED_LICENCE_AREAS = {
     "WPD South Wales": "South Wales",
 }
 
+# The carbon intensity region id, which every entry has because it comes from the config flow's
+# lookup, mapped to the same licence areas. This is the fallback for an entry whose DNO string is
+# missing or "Unknown", which is what choosing a region by hand produces. Measured 2026-09-19:
+# Birmingham 8, Cardiff 7, Exeter 11, Nottingham 9.
+NGED_REGION_IDS = {
+    7: "South Wales",
+    8: "West Midlands",
+    9: "East Midlands",
+    11: "South West",
+}
+
 NGED_DATASETS = {
     # Live and planned power cuts, with affected-customer counts, for all four licence areas at once.
     "live_power_cuts": "live-power-cuts",

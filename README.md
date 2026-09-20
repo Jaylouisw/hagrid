@@ -135,14 +135,41 @@ automation:
 | [Carbon Intensity API](https://api.carbonintensity.org.uk/) | Carbon intensity, generation mix, forecasts | Open Government Licence |
 | [UKPN Open Data](https://ukpowernetworks.opendatasoft.com/) | Substations, power lines, faults, embedded generation | CC BY 4.0 |
 | [postcodes.io](https://postcodes.io/) | Reverse geocoding: the Home Assistant home location to a UK postcode | Open Government Licence |
+| [NGED Connected Data](https://connecteddata.nationalgrid.co.uk/) | Live power cuts, live GSP flows and demand for the Midlands, South Wales and the South West | Open data (IB1-O) |
+| [UKPN Open Data](https://ukpowernetworks.opendatasoft.com/) and NGED's live layer, as above | Live power cuts with affected-customer counts | CC BY 4.0 / Open Government Licence |
 
-Every source used by the core GB feature is free and keyless. The DNO layer currently covers
-**UK Power Networks** (London, Eastern, South Eastern); other DNOs are roadmap items, and the
-non-GB TSO clients in the code are unverified — treat the GB path as what works.
+Every source used by the core GB feature is free and keyless. The non-GB TSO clients in the code are
+unverified — treat the GB path as what works.
+
+### Which network operators are covered
+
+| Your network operator | Live power cuts | Substations and lines on the map |
+|---|---|---|
+| UK Power Networks (London, Eastern, South Eastern) | yes, keyless | UKPN's own open data, plus OpenStreetMap |
+| NGED (East Midlands, West Midlands, South West, South Wales) | yes, keyless | OpenStreetMap, plus NGED's own locations if you register for a key |
+| SSEN, ENWL, Northern Powergrid, SP Energy | not yet | OpenStreetMap |
+
+The map does not depend on your network operator at all. It is drawn from OpenStreetMap around the
+home location set in Home Assistant, at whatever radius you choose, and OpenStreetMap covers the whole
+country: measured 2026-09-20, a 10 km radius on Birmingham returns 10,090 power features, of which
+1,709 are substations, 413 power lines, 394 towers and 89 minor lines. It is community-mapped, so
+treat it as indicative rather than authoritative, and set the radius to something sensible.
+
+Both fault feeds are open data, so nobody needs an account for the power cuts. NGED restricts its
+substation locations and its generation capacity register to registered users: that restriction is
+the mitigation its own Data Sharing Assessment relies on, so it is not something this integration
+routes around. If you want those layers, register on NGED's portal and paste your own key into the
+integration; if you do not, everything else still works.
+
+One difference worth knowing: UKPN publishes coordinates for each incident and NGED does not, so
+NGED's power cuts appear in the Live Faults sensor's attributes with their licence area but not as
+markers on the map.
 
 ## 🛣️ Roadmap
 
-- [ ] More DNO sources (SSEN, ENWL, NPG, SPEN, NGED)
+- [x] NGED live layer (East Midlands, West Midlands, South West, South Wales)
+- [ ] NGED static layers (substation locations, generation capacity register)
+- [ ] More DNO sources (SSEN, ENWL, NPG, SPEN)
 - [ ] Energy Dashboard integration
 - [ ] Smart meter data import
 - [ ] Price signals (Octopus Agile, etc.)

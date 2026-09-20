@@ -18,6 +18,7 @@ from .const import (
     CONF_ALBERTA_ENABLED,
     CONF_BELGIUM_ENABLED,
     CONF_DENMARK_ENABLED,
+    CONF_DNO,
     CONF_EIA_API_KEY,
     # Global API keys
     CONF_ELECTRICITY_MAPS_API_KEY,
@@ -204,6 +205,9 @@ class HAGridConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 data={
                     CONF_POSTCODE: self._postcode,
                     CONF_REGION_ID: self._region_id,
+                    # Stored because it decides which network operator's power cuts to ask for, and
+                    # it cannot be re-derived from the region id alone for every operator.
+                    CONF_DNO: self._region_info.get("dno", ""),
                     # UK API keys
                     CONF_NATIONAL_GRID_API_KEY: user_input.get(CONF_NATIONAL_GRID_API_KEY, ""),
                     CONF_SSEN_NERDA_API_KEY: user_input.get(CONF_SSEN_NERDA_API_KEY, ""),
