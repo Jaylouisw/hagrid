@@ -3857,7 +3857,7 @@ class TranspowerClient:
                 async with self._session.head(url) as resp:
                     if resp.status == 200:
                         return url
-            except aiohttp.ClientError:
+            except (aiohttp.ClientError, TimeoutError):
                 continue
 
         return None
