@@ -3916,7 +3916,7 @@ class TranspowerClient:
         except (aiohttp.ClientError, TimeoutError) as e:
             _LOGGER.error("Error fetching NZ generation CSV: %s", e)
             return None
-        except (ValueError, IndexError) as e:
+        except (KeyError, IndexError, TypeError, ValueError) as e:
             _LOGGER.error("Error parsing NZ generation CSV: %s", e)
             return None
 
