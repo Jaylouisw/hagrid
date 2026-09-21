@@ -426,6 +426,7 @@ class CarbonIntensityClient(GridAPIClient):
                     return await response.json()
                 _LOGGER.error("Carbon Intensity API error: %s", response.status)
                 return None
+        # ValueError here is for malformed JSON from response.json() (JSONDecodeError).
         except (aiohttp.ClientError, TimeoutError, ValueError) as e:
             _LOGGER.error("Carbon Intensity API request failed: %s", e)
             return None
@@ -3914,6 +3915,7 @@ class TranspowerClient:
                     "renewable_generation_mw": renewable_gen,
                     "renewable_percentage": (renewable_gen / total_gen * 100) if total_gen > 0 else None,
                 }
+        # Unicode decoding happens while reading response text, before the CSV parsing below.
         except (aiohttp.ClientError, TimeoutError, UnicodeDecodeError) as e:
             _LOGGER.error("Error fetching NZ generation CSV: %s", e)
             return None
