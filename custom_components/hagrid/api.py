@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import asyncio
 import base64
-import csv
 import logging
 import math
 from abc import ABC, abstractmethod
@@ -3920,7 +3919,7 @@ class TranspowerClient:
                 "renewable_generation_mw": renewable_gen,
                 "renewable_percentage": (renewable_gen / total_gen * 100) if total_gen > 0 else None,
             }
-        except (csv.Error, KeyError, IndexError, TypeError, ValueError) as e:
+        except (KeyError, IndexError, TypeError, ValueError) as e:
             _LOGGER.error("Error parsing NZ generation CSV: %s", e)
             return None
 
