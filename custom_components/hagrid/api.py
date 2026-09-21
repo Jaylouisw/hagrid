@@ -383,7 +383,7 @@ class PostcodesIoClient:
                 payload = await response.json()
         except GeocoderUnavailable:
             raise
-        except Exception as err:
+        except (aiohttp.ClientError, TimeoutError, ValueError) as err:
             raise GeocoderUnavailable(f"postcodes.io request failed: {err}") from err
 
         results = payload.get("result") or []
@@ -425,7 +425,7 @@ class CarbonIntensityClient(GridAPIClient):
                     return await response.json()
                 _LOGGER.error("Carbon Intensity API error: %s", response.status)
                 return None
-        except Exception as e:
+        except (aiohttp.ClientError, TimeoutError, ValueError) as e:
             _LOGGER.error("Carbon Intensity API request failed: %s", e)
             return None
 
@@ -561,7 +561,7 @@ class CarbonIntensityClient(GridAPIClient):
                 ),
                 generation_mix=generation_mix,
             )
-        except Exception as e:
+        except (KeyError, IndexError, TypeError, ValueError) as e:
             _LOGGER.error("Error parsing regional data: %s", e)
             return None
 
@@ -597,7 +597,7 @@ class CarbonIntensityClient(GridAPIClient):
                     ),
                     generation_mix=generation_mix,
                 ))
-        except Exception as e:
+        except (KeyError, IndexError, TypeError, ValueError) as e:
             _LOGGER.error("Error parsing all regions: %s", e)
 
         return regions
@@ -641,7 +641,7 @@ class CarbonIntensityClient(GridAPIClient):
                     from_time=datetime.fromisoformat(item.get("from", "").replace("Z", "+00:00")),
                     to_time=datetime.fromisoformat(item.get("to", "").replace("Z", "+00:00")),
                 ))
-        except Exception as e:
+        except (KeyError, IndexError, TypeError, ValueError) as e:
             _LOGGER.error("Error parsing intensity forecast: %s", e)
 
         return forecasts
@@ -705,7 +705,7 @@ class UKPNClient(GridAPIClient):
                     return await response.json()
                 _LOGGER.error("UKPN API error: %s", response.status)
                 return None
-        except Exception as e:
+        except (aiohttp.ClientError, TimeoutError, ValueError) as e:
             _LOGGER.error("UKPN API request failed: %s", e)
             return None
 
@@ -815,7 +815,7 @@ class UKPNClient(GridAPIClient):
                         "dno_area": fields.get("dno_area"),
                     },
                 ))
-            except Exception as e:
+            except (KeyError, IndexError, TypeError, ValueError) as e:
                 _LOGGER.debug("Error parsing substation record: %s", e)
                 continue
 
@@ -861,7 +861,7 @@ class UKPNClient(GridAPIClient):
                         "primary_feeder": fields.get("primary_feeder"),
                     },
                 ))
-            except Exception as e:
+            except (KeyError, IndexError, TypeError, ValueError) as e:
                 _LOGGER.debug("Error parsing secondary substation: %s", e)
                 continue
 
@@ -904,7 +904,7 @@ class UKPNClient(GridAPIClient):
                     voltage="33kV",
                     circuit_id=fields.get("circuit_id"),
                 ))
-            except Exception as e:
+            except (KeyError, IndexError, TypeError, ValueError) as e:
                 _LOGGER.debug("Error parsing 33kV line: %s", e)
                 continue
 
@@ -946,7 +946,7 @@ class UKPNClient(GridAPIClient):
                     voltage=fields.get("voltage", "HV"),
                     circuit_id=fields.get("circuit_id"),
                 ))
-            except Exception as e:
+            except (KeyError, IndexError, TypeError, ValueError) as e:
                 _LOGGER.debug("Error parsing HV line: %s", e)
                 continue
 
@@ -989,7 +989,7 @@ class UKPNClient(GridAPIClient):
                     connection_voltage=fields.get("connection_voltage"),
                     status=fields.get("status"),
                 ))
-            except Exception as e:
+            except (KeyError, IndexError, TypeError, ValueError) as e:
                 _LOGGER.debug("Error parsing embedded generation: %s", e)
                 continue
 
@@ -1029,7 +1029,7 @@ class OverpassClient:
         except TimeoutError:
             _LOGGER.error("Overpass API timeout")
             return None
-        except Exception as e:
+        except (aiohttp.ClientError, ValueError) as e:
             _LOGGER.error("Overpass API request failed: %s", e)
             return None
 
@@ -1116,7 +1116,7 @@ class OverpassClient:
                     operator=tags.get("operator"),
                     tags=tags,
                 ))
-            except Exception as e:
+            except (KeyError, IndexError, TypeError, ValueError) as e:
                 _LOGGER.debug("Error parsing OSM element: %s", e)
                 continue
 
@@ -1170,7 +1170,7 @@ class OverpassClient:
                     operator=tags.get("operator"),
                     tags=tags,
                 ))
-            except Exception as e:
+            except (KeyError, IndexError, TypeError, ValueError) as e:
                 _LOGGER.debug("Error parsing OSM substation: %s", e)
                 continue
 
@@ -1194,7 +1194,7 @@ class NESOClient:
                     return await response.json()
                 _LOGGER.error("NESO API error: %s", response.status)
                 return None
-        except Exception as e:
+        except (aiohttp.ClientError, TimeoutError, ValueError) as e:
             _LOGGER.error("NESO API request failed: %s", e)
             return None
 
@@ -1338,7 +1338,7 @@ class NationalGridClient(NGEDLiveDataMixin):
                     return response.status, await response.json()
                 _LOGGER.error("National Grid API error: %s for %s", response.status, endpoint)
                 return response.status, None
-        except Exception as e:
+        except (aiohttp.ClientError, TimeoutError, ValueError) as e:
             _LOGGER.error("National Grid API request failed: %s", e)
             return None, None
 
@@ -1431,7 +1431,7 @@ class NationalGridClient(NGEDLiveDataMixin):
                     latitude=lat,
                     longitude=lon,
                 ))
-            except Exception as e:
+            except (KeyError, IndexError, TypeError, ValueError) as e:
                 _LOGGER.debug("Error parsing NG substation: %s", e)
                 continue
 
@@ -1464,7 +1464,7 @@ class SSENNerdaClient:
                     return await response.json()
                 _LOGGER.error("SSEN NERDA API error: %s", response.status)
                 return None
-        except Exception as e:
+        except (aiohttp.ClientError, TimeoutError, ValueError) as e:
             _LOGGER.error("SSEN NERDA API request failed: %s", e)
             return None
 
@@ -1507,7 +1507,7 @@ class EnergyDashboardClient:
                     return await response.json()
                 _LOGGER.error("Energy Dashboard API error: %s", response.status)
                 return None
-        except Exception as e:
+        except (aiohttp.ClientError, TimeoutError, ValueError) as e:
             _LOGGER.error("Energy Dashboard API request failed: %s", e)
             return None
 
@@ -1555,7 +1555,7 @@ class ElexonBMRSClient:
                     return await response.json()
                 _LOGGER.warning("Elexon API error %s: %s", response.status, url)
                 return None
-        except Exception as e:
+        except (aiohttp.ClientError, TimeoutError, ValueError) as e:
             _LOGGER.error("Elexon API request failed: %s", e)
             return None
 
@@ -1937,7 +1937,7 @@ class ElectricityMapsClient:
                 else:
                     _LOGGER.error("Electricity Maps API error: %s", response.status)
                 return None
-        except Exception as e:
+        except (aiohttp.ClientError, TimeoutError, ValueError) as e:
             _LOGGER.error("Electricity Maps API request failed: %s", e)
             return None
 
@@ -1969,7 +1969,7 @@ class ElectricityMapsClient:
                 ),
                 data_source="Electricity Maps",
             )
-        except Exception as e:
+        except (KeyError, IndexError, TypeError, ValueError) as e:
             _LOGGER.error("Error parsing Electricity Maps carbon data: %s", e)
             return None
 
@@ -2009,7 +2009,7 @@ class ElectricityMapsClient:
                 ),
                 data_source="Electricity Maps",
             )
-        except Exception as e:
+        except (KeyError, IndexError, TypeError, ValueError) as e:
             _LOGGER.error("Error parsing Electricity Maps power data: %s", e)
             return None
 
@@ -2048,7 +2048,7 @@ class ElectricityMapsClient:
                     ),
                     data_source="Electricity Maps",
                 ))
-            except Exception:
+            except (KeyError, IndexError, TypeError, ValueError):
                 continue
 
         return results
@@ -2109,7 +2109,7 @@ class EIAClient:
                 else:
                     _LOGGER.error("EIA API error: %s", response.status)
                 return None
-        except Exception as e:
+        except (aiohttp.ClientError, TimeoutError, ValueError) as e:
             _LOGGER.error("EIA API request failed: %s", e)
             return None
 
@@ -2172,7 +2172,7 @@ class EIAClient:
                 timestamp=datetime.fromisoformat(latest_period) if latest_period else datetime.now(),
                 data_source="EIA",
             )
-        except Exception as e:
+        except (KeyError, IndexError, TypeError, ValueError) as e:
             _LOGGER.error("Error parsing EIA data: %s", e)
             return None
 
@@ -2205,7 +2205,7 @@ class EIAClient:
             if rows:
                 return float(rows[0].get("value", 0))
             return None
-        except Exception as e:
+        except (KeyError, IndexError, TypeError, ValueError) as e:
             _LOGGER.error("Error parsing EIA demand: %s", e)
             return None
 
@@ -2246,7 +2246,7 @@ class ENTSOEClient:
                 else:
                     _LOGGER.error("ENTSO-E API error: %s", response.status)
                 return None
-        except Exception as e:
+        except (aiohttp.ClientError, TimeoutError, ValueError) as e:
             _LOGGER.error("ENTSO-E API request failed: %s", e)
             return None
 
@@ -2273,7 +2273,7 @@ class ENTSOEClient:
                                 "position": int(position.text) if position is not None else 0,
                                 "quantity": float(quantity.text),
                             })
-        except Exception as e:
+        except (ET.ParseError, TypeError, ValueError) as e:
             _LOGGER.error("Error parsing ENTSO-E XML: %s", e)
 
         return results
@@ -2346,7 +2346,7 @@ class ENTSOEClient:
                 timestamp=datetime.utcnow(),
                 data_source="ENTSO-E",
             )
-        except Exception as e:
+        except (KeyError, IndexError, TypeError, ValueError) as e:
             _LOGGER.error("Error parsing ENTSO-E generation: %s", e)
             return None
 
@@ -2386,7 +2386,7 @@ class ENTSOEClient:
                 # Return the latest value
                 return results[-1].get("quantity")
             return None
-        except Exception as e:
+        except (KeyError, IndexError, TypeError, ValueError) as e:
             _LOGGER.error("Error parsing ENTSO-E load: %s", e)
             return None
 
@@ -2419,7 +2419,7 @@ class OpenElectricityClient:
                 else:
                     _LOGGER.error("OpenElectricity API error: %s", response.status)
                 return None
-        except Exception as e:
+        except (aiohttp.ClientError, TimeoutError, ValueError) as e:
             _LOGGER.error("OpenElectricity API request failed: %s", e)
             return None
 
@@ -2469,7 +2469,7 @@ class OpenElectricityClient:
                 ) if data.get("data_updated") else datetime.now(),
                 data_source="OpenElectricity",
             )
-        except Exception as e:
+        except (KeyError, IndexError, TypeError, ValueError) as e:
             _LOGGER.error("Error parsing OpenElectricity data: %s", e)
             return None
 
@@ -2502,7 +2502,7 @@ class OpenElectricityClient:
                 ) if data.get("data_updated") else datetime.now(),
                 data_source="OpenElectricity",
             )
-        except Exception as e:
+        except (KeyError, IndexError, TypeError, ValueError) as e:
             _LOGGER.error("Error parsing OpenElectricity emissions: %s", e)
             return None
 
@@ -2538,7 +2538,7 @@ class REEEsiosClient:
                 else:
                     _LOGGER.error("REE Esios API error: %s", response.status)
                 return None
-        except Exception as e:
+        except (aiohttp.ClientError, TimeoutError, ValueError) as e:
             _LOGGER.error("REE Esios API request failed: %s", e)
             return None
 
@@ -2576,7 +2576,7 @@ class REEEsiosClient:
                 ) if latest.get("datetime") else datetime.now(),
                 data_source="REE Esios",
             )
-        except Exception as e:
+        except (KeyError, IndexError, TypeError, ValueError) as e:
             _LOGGER.error("Error parsing REE Esios data: %s", e)
             return None
 
@@ -2596,7 +2596,7 @@ class REEEsiosClient:
             if values:
                 return values[0].get("value")
             return None
-        except Exception as e:
+        except (KeyError, IndexError, TypeError, ValueError) as e:
             _LOGGER.error("Error parsing REE Esios CO2 data: %s", e)
             return None
 
@@ -2655,7 +2655,7 @@ class RTEClient:
                 else:
                     _LOGGER.error("RTE OAuth error: %s", response.status)
                     return None
-        except Exception as e:
+        except (aiohttp.ClientError, TimeoutError, ValueError) as e:
             _LOGGER.error("RTE OAuth request failed: %s", e)
             return None
 
@@ -2682,7 +2682,7 @@ class RTEClient:
                 else:
                     _LOGGER.error("RTE API error: %s", response.status)
                 return None
-        except Exception as e:
+        except (aiohttp.ClientError, TimeoutError, ValueError) as e:
             _LOGGER.error("RTE API request failed: %s", e)
             return None
 
@@ -2719,7 +2719,7 @@ class RTEClient:
                 timestamp=datetime.now(),
                 data_source="RTE",
             )
-        except Exception as e:
+        except (KeyError, IndexError, TypeError, ValueError) as e:
             _LOGGER.error("Error parsing RTE generation: %s", e)
             return None
 
@@ -2738,7 +2738,7 @@ class RTEClient:
             if values:
                 return values[-1].get("value")
             return None
-        except Exception as e:
+        except (KeyError, IndexError, TypeError, ValueError) as e:
             _LOGGER.error("Error parsing RTE consumption: %s", e)
             return None
 
@@ -2828,7 +2828,7 @@ class FingridClient:
                     return await resp.json()
                 _LOGGER.warning("Fingrid API returned %d for dataset %d", resp.status, dataset_id)
                 return None
-        except Exception as e:
+        except (aiohttp.ClientError, TimeoutError, ValueError) as e:
             _LOGGER.error("Fingrid API error: %s", e)
             return None
 
@@ -2962,7 +2962,7 @@ class EnerginetClient:
                     return await resp.json()
                 _LOGGER.warning("Energinet API returned %d for %s", resp.status, dataset)
                 return None
-        except Exception as e:
+        except (aiohttp.ClientError, TimeoutError, ValueError) as e:
             _LOGGER.error("Energinet API error: %s", e)
             return None
 
@@ -3115,7 +3115,7 @@ class EliaClient:
                     return await resp.json()
                 _LOGGER.warning("Elia API returned %d for %s", resp.status, dataset)
                 return None
-        except Exception as e:
+        except (aiohttp.ClientError, TimeoutError, ValueError) as e:
             _LOGGER.error("Elia API error: %s", e)
             return None
 
@@ -3321,7 +3321,7 @@ class SMARDClient:
                 if resp.status == 200:
                     return await resp.json()
                 return None
-        except Exception as e:
+        except (aiohttp.ClientError, TimeoutError, ValueError) as e:
             _LOGGER.error("SMARD API error: %s", e)
             return None
 
@@ -3451,7 +3451,7 @@ class PSEClient:
                     return await resp.json()
                 _LOGGER.warning("PSE API returned %d for %s", resp.status, endpoint)
                 return None
-        except Exception as e:
+        except (aiohttp.ClientError, TimeoutError, ValueError) as e:
             _LOGGER.error("PSE API error: %s", e)
             return None
 
@@ -3565,7 +3565,7 @@ class TernaClient:
                     return await resp.json()
                 _LOGGER.warning("Terna API returned %d for %s", resp.status, endpoint)
                 return None
-        except Exception as e:
+        except (aiohttp.ClientError, TimeoutError, ValueError) as e:
             _LOGGER.error("Terna API error: %s", e)
             return None
 
@@ -3641,7 +3641,7 @@ class IESOClient:
                     return await resp.text()
                 _LOGGER.warning("IESO API returned %d for %s", resp.status, report_name)
                 return None
-        except Exception as e:
+        except (aiohttp.ClientError, TimeoutError, ValueError) as e:
             _LOGGER.error("IESO API error: %s", e)
             return None
 
@@ -3689,7 +3689,7 @@ class IESOClient:
                 timestamp=datetime.now(UTC),
                 data_source="IESO",
             )
-        except Exception as e:
+        except (ET.ParseError, TypeError, ValueError) as e:
             _LOGGER.error("Error parsing IESO data: %s", e)
             return None
 
@@ -3706,7 +3706,7 @@ class IESOClient:
             if demand_elem is not None and demand_elem.text:
                 return float(demand_elem.text)
             return None
-        except Exception as e:
+        except (ET.ParseError, TypeError, ValueError) as e:
             _LOGGER.error("Error parsing IESO demand: %s", e)
             return None
 
@@ -3742,7 +3742,7 @@ class AESOClient:
                     return await resp.json()
                 _LOGGER.warning("AESO API returned %d for %s", resp.status, endpoint)
                 return None
-        except Exception as e:
+        except (aiohttp.ClientError, TimeoutError, ValueError) as e:
             _LOGGER.error("AESO API error: %s", e)
             return None
 
@@ -3857,7 +3857,7 @@ class TranspowerClient:
                 async with self._session.head(url) as resp:
                     if resp.status == 200:
                         return url
-            except Exception:
+            except aiohttp.ClientError:
                 continue
 
         return None
@@ -3913,7 +3913,7 @@ class TranspowerClient:
                     "renewable_generation_mw": renewable_gen,
                     "renewable_percentage": (renewable_gen / total_gen * 100) if total_gen > 0 else None,
                 }
-        except Exception as e:
+        except (aiohttp.ClientError, TimeoutError, ValueError) as e:
             _LOGGER.error("Error parsing NZ generation CSV: %s", e)
             return None
 
@@ -4028,7 +4028,7 @@ class WattTimeClient:
                     return self._token
                 _LOGGER.warning("WattTime login returned %d", resp.status)
                 return None
-        except Exception as e:
+        except (aiohttp.ClientError, TimeoutError, ValueError) as e:
             _LOGGER.error("WattTime login error: %s", e)
             return None
 
@@ -4047,7 +4047,7 @@ class WattTimeClient:
                     return await resp.json()
                 _LOGGER.warning("WattTime API returned %d for %s", resp.status, endpoint)
                 return None
-        except Exception as e:
+        except (aiohttp.ClientError, TimeoutError, ValueError) as e:
             _LOGGER.error("WattTime API error: %s", e)
             return None
 

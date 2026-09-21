@@ -127,6 +127,11 @@ def test_a_transport_error_is_reported_as_the_service_being_unavailable() -> Non
         _lookup(_FakeSession(error=aiohttp.ClientError("connection refused")))
 
 
+def test_an_unexpected_lookup_error_is_not_silently_treated_as_an_outage() -> None:
+    with pytest.raises(RuntimeError):
+        _lookup(_FakeSession(error=RuntimeError("bug in lookup path")))
+
+
 def test_config_flow_asks_for_no_postcode() -> None:
     """The whole point of the change: a postcode is a question Home Assistant already knows the answer to.
 

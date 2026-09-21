@@ -20,6 +20,7 @@ select = [
     "UP",  # pyupgrade: deprecated syntax
     "B",   # flake8-bugbear: likely mistakes
     "C4",  # flake8-comprehensions
+    "BLE001",  # blind-except: require narrow catches or explicit justifications
     "PIE", # flake8-pie
     "RUF", # ruff's own rules
 ]
@@ -32,7 +33,6 @@ select = [
 #               what the integration emits. The 798 harmless ones outside strings were cleaned up.
 #   DTZ         24 datetime.now()/utcnow() calls with no timezone, in code paths with no test
 #               coverage. Real, and worth doing with tests in place rather than blind.
-#   BLE001      79 bare `except Exception:` handlers, most of them reporting and returning None.
 #   S, SIM, RET, TRY, PERF, PLR, TRY003  not triaged yet.
 
 [tool.pytest.ini_options]

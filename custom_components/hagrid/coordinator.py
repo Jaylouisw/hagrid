@@ -625,7 +625,7 @@ class HAGridCoordinator(DataUpdateCoordinator):
                 frequency.frequency_hz if frequency else 0,
                 demand.demand_mw if demand else 0,
             )
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - optional provider failures must not abort refresh
             _LOGGER.debug("Error fetching Elexon data: %s", e)
 
     async def _fetch_neso_data(self, data: dict[str, Any]) -> None:
@@ -636,7 +636,7 @@ class HAGridCoordinator(DataUpdateCoordinator):
                 data["neso_data"] = {
                     "embedded_forecasts": forecasts,
                 }
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - optional provider failures must not abort refresh
             _LOGGER.debug("Error fetching NESO data: %s", e)
 
     async def _fetch_national_grid_data(self, data: dict[str, Any]) -> None:
@@ -655,7 +655,7 @@ class HAGridCoordinator(DataUpdateCoordinator):
                 data["national_grid_data"] = {
                     "substations": substations,
                 }
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - optional provider failures must not abort refresh
             _LOGGER.debug("Error fetching National Grid data: %s", e)
 
     async def _fetch_ssen_data(self, data: dict[str, Any]) -> None:
@@ -666,7 +666,7 @@ class HAGridCoordinator(DataUpdateCoordinator):
                 data["ssen_data"] = {
                     "network": network,
                 }
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - optional provider failures must not abort refresh
             _LOGGER.debug("Error fetching SSEN data: %s", e)
 
     async def _fetch_energy_dashboard_data(self, data: dict[str, Any]) -> None:
@@ -677,7 +677,7 @@ class HAGridCoordinator(DataUpdateCoordinator):
                 data["energy_dashboard_data"] = {
                     "generation": generation,
                 }
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - optional provider failures must not abort refresh
             _LOGGER.debug("Error fetching Energy Dashboard data: %s", e)
 
     # === Global API Data Fetching Methods ===
@@ -704,7 +704,7 @@ class HAGridCoordinator(DataUpdateCoordinator):
                     zone,
                     carbon.carbon_intensity,
                 )
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - optional provider failures must not abort refresh
             _LOGGER.debug("Error fetching Electricity Maps data: %s", e)
 
     async def _fetch_eia_data(self, data: dict[str, Any]) -> None:
@@ -731,7 +731,7 @@ class HAGridCoordinator(DataUpdateCoordinator):
                     region,
                     demand.get("value", 0) if isinstance(demand, dict) else 0,
                 )
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - optional provider failures must not abort refresh
             _LOGGER.debug("Error fetching EIA data: %s", e)
 
     async def _fetch_entsoe_data(self, data: dict[str, Any]) -> None:
@@ -756,7 +756,7 @@ class HAGridCoordinator(DataUpdateCoordinator):
                 "ENTSO-E (%s): generation and load data retrieved",
                 area,
             )
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - optional provider failures must not abort refresh
             _LOGGER.debug("Error fetching ENTSO-E data: %s", e)
 
     async def _fetch_australia_data(self, data: dict[str, Any]) -> None:
@@ -778,7 +778,7 @@ class HAGridCoordinator(DataUpdateCoordinator):
             }
 
             _LOGGER.debug("OpenElectricity (%s): data retrieved", region)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - optional provider failures must not abort refresh
             _LOGGER.debug("Error fetching Australia data: %s", e)
 
     async def _fetch_spain_data(self, data: dict[str, Any]) -> None:
@@ -799,7 +799,7 @@ class HAGridCoordinator(DataUpdateCoordinator):
 
             if co2_free:
                 _LOGGER.debug("REE Esios (Spain): %.1f%% CO2-free", co2_free)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - optional provider failures must not abort refresh
             _LOGGER.debug("Error fetching Spain data: %s", e)
 
     async def _fetch_france_data(self, data: dict[str, Any]) -> None:
@@ -818,7 +818,7 @@ class HAGridCoordinator(DataUpdateCoordinator):
             }
 
             _LOGGER.debug("RTE (France): generation and consumption data retrieved")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - optional provider failures must not abort refresh
             _LOGGER.debug("Error fetching France data: %s", e)
 
     # === Additional Open API Fetch Methods ===
@@ -843,7 +843,7 @@ class HAGridCoordinator(DataUpdateCoordinator):
                     power_breakdown.power_production_mw or 0,
                     power_breakdown.power_consumption_mw or 0,
                 )
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - optional provider failures must not abort refresh
             _LOGGER.debug("Error fetching Finland data: %s", e)
 
     async def _fetch_denmark_data(self, data: dict[str, Any]) -> None:
@@ -864,7 +864,7 @@ class HAGridCoordinator(DataUpdateCoordinator):
 
             if co2:
                 _LOGGER.debug("Energinet (Denmark): %d gCO2/kWh", co2.carbon_intensity)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - optional provider failures must not abort refresh
             _LOGGER.debug("Error fetching Denmark data: %s", e)
 
     async def _fetch_belgium_data(self, data: dict[str, Any]) -> None:
@@ -885,7 +885,7 @@ class HAGridCoordinator(DataUpdateCoordinator):
 
             if load:
                 _LOGGER.debug("Elia (Belgium): %.0f MW load", load)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - optional provider failures must not abort refresh
             _LOGGER.debug("Error fetching Belgium data: %s", e)
 
     async def _fetch_germany_data(self, data: dict[str, Any]) -> None:
@@ -918,7 +918,7 @@ class HAGridCoordinator(DataUpdateCoordinator):
                     generation_mix.power_production_mw or 0,
                     renewable_pct,
                 )
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - optional provider failures must not abort refresh
             _LOGGER.debug("Error fetching Germany data: %s", e)
 
     async def _fetch_poland_data(self, data: dict[str, Any]) -> None:
@@ -942,7 +942,7 @@ class HAGridCoordinator(DataUpdateCoordinator):
                     "PSE (Poland): %.0f MW production",
                     generation.power_production_mw or 0,
                 )
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - optional provider failures must not abort refresh
             _LOGGER.debug("Error fetching Poland data: %s", e)
 
     async def _fetch_italy_data(self, data: dict[str, Any]) -> None:
@@ -961,7 +961,7 @@ class HAGridCoordinator(DataUpdateCoordinator):
 
             if demand:
                 _LOGGER.debug("Terna (Italy): %.0f MW demand", demand)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - optional provider failures must not abort refresh
             _LOGGER.debug("Error fetching Italy data: %s", e)
 
     async def _fetch_ontario_data(self, data: dict[str, Any]) -> None:
@@ -992,7 +992,7 @@ class HAGridCoordinator(DataUpdateCoordinator):
                     generation.power_production_mw or 0,
                     renewable_pct,
                 )
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - optional provider failures must not abort refresh
             _LOGGER.debug("Error fetching Ontario data: %s", e)
 
     async def _fetch_alberta_data(self, data: dict[str, Any]) -> None:
@@ -1011,7 +1011,7 @@ class HAGridCoordinator(DataUpdateCoordinator):
 
             if price:
                 _LOGGER.debug("AESO (Alberta): $%.2f CAD/MWh", price.price)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - optional provider failures must not abort refresh
             _LOGGER.debug("Error fetching Alberta data: %s", e)
 
     async def _fetch_new_zealand_data(self, data: dict[str, Any]) -> None:
@@ -1041,7 +1041,7 @@ class HAGridCoordinator(DataUpdateCoordinator):
                     "Transpower (NZ): %.1f%% renewable",
                     renewable_pct,
                 )
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - optional provider failures must not abort refresh
             _LOGGER.debug("Error fetching New Zealand data: %s", e)
 
     async def _fetch_watttime_data(self, data: dict[str, Any]) -> None:
@@ -1064,7 +1064,7 @@ class HAGridCoordinator(DataUpdateCoordinator):
 
             if carbon:
                 _LOGGER.debug("WattTime (%s): index %d", zone, carbon.carbon_intensity)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - optional provider failures must not abort refresh
             _LOGGER.debug("Error fetching WattTime data: %s", e)
 
     async def _update_infrastructure(self) -> None:
@@ -1107,7 +1107,7 @@ class HAGridCoordinator(DataUpdateCoordinator):
             if self.include_osm_data and self.overpass_client:
                 await self._update_osm_data()
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - optional provider failures must not abort refresh
             _LOGGER.error("Error updating infrastructure: %s", e)
 
     async def _update_osm_data(self) -> None:
@@ -1135,7 +1135,7 @@ class HAGridCoordinator(DataUpdateCoordinator):
                 len(osm_features),
                 self.osm_radius_km,
             )
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - optional provider failures must not abort refresh
             _LOGGER.debug("Error fetching OSM data: %s", e)
 
     async def async_shutdown(self) -> None:

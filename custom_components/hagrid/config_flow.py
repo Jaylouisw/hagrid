@@ -172,7 +172,9 @@ class HAGridConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         except ValueError:
             self._resolution_error = "region_not_found"
             return False
-        except Exception as err:
+        # Last line of defence for the flow: unknown failures here must become a form error, not a
+        # spinner caused by an uncaught exception.
+        except Exception as err:  # noqa: BLE001
             _LOGGER.error("Could not resolve a region for %s: %s", location.outcode, err)
             self._resolution_error = "cannot_connect"
             return False
