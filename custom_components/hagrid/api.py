@@ -3913,7 +3913,10 @@ class TranspowerClient:
                     "renewable_generation_mw": renewable_gen,
                     "renewable_percentage": (renewable_gen / total_gen * 100) if total_gen > 0 else None,
                 }
-        except (aiohttp.ClientError, TimeoutError, ValueError) as e:
+        except (aiohttp.ClientError, TimeoutError) as e:
+            _LOGGER.error("Error fetching NZ generation CSV: %s", e)
+            return None
+        except (ValueError, IndexError) as e:
             _LOGGER.error("Error parsing NZ generation CSV: %s", e)
             return None
 
