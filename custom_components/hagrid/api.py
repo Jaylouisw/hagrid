@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import csv
 import logging
 import math
 from abc import ABC, abstractmethod
@@ -3916,7 +3917,7 @@ class TranspowerClient:
         except (aiohttp.ClientError, TimeoutError) as e:
             _LOGGER.error("Error fetching NZ generation CSV: %s", e)
             return None
-        except (KeyError, IndexError, TypeError, ValueError) as e:
+        except (csv.Error, KeyError, IndexError, TypeError, ValueError) as e:
             _LOGGER.error("Error parsing NZ generation CSV: %s", e)
             return None
 
