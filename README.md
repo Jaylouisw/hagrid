@@ -28,14 +28,12 @@ mix, live faults, and your local grid infrastructure on an interactive map.
 1. Download the latest release
 2. Copy `custom_components/hagrid/` into your `config/custom_components/` — the folder must be named
    exactly `hagrid`
-3. Copy `www/hagrid-map/` into your `config/www/`
-4. Restart Home Assistant
+3. Restart Home Assistant
 
 ### The map card
 
-The integration installs the sensors; the map is a separate Lovelace resource. Copy
-`www/hagrid-map/hagrid-map.js` to `config/www/hagrid-map/` and add it under
-**Settings → Dashboards → Resources** as `/local/hagrid-map/hagrid-map.js` (JavaScript module), then:
+The map card is registered automatically when the integration loads — no manual resource entry is
+needed. Add the card to any Lovelace dashboard:
 
 ```yaml
 type: custom:hagrid-map-card

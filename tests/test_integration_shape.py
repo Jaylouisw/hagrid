@@ -73,13 +73,31 @@ def test_config_flow_handler_registers_in_home_assistant() -> None:
     assert config_entries.HANDLERS.get("hagrid") is config_flow.HAGridConfigFlow
 
 
+def test_map_card_js_is_inside_integration() -> None:
+    """The JS file must live inside the integration so HACS installs it automatically."""
+    js = INTEGRATION / "www" / "hagrid-map.js"
+    assert js.is_file(), (
+        f"{js} not found — the map-card JS must live inside the integration folder "
+        "so that HACS installs it without any manual file-copy step"
+    )
+
+
+def test_manifest_frontend_dependency() -> None:
+    """frontend must be loaded before async_setup adds the extra module URL."""
+    manifest = json.loads((INTEGRATION / "manifest.json").read_text())
+    assert "frontend" in manifest.get("dependencies", []), (
+        "'frontend' must be in manifest.json dependencies so HAGrid can call "
+        "add_extra_js_url during async_setup"
+    )
+
+
 def test_circuit_flow_constructs_the_way_call_sites_do() -> None:
     """The dataclass behind the import-failure bug, built with the keyword arguments used in api.py."""
-    from homeassistant.util import dt
+    from datetime import UTC, datetime
 
     from custom_components.hagrid.api import CircuitFlow
 
-    now = dt.now()
+    now = datetime.now(UTC)
     flow = CircuitFlow(
         circuit_id="gen_wind",
         circuit_type="generation",
