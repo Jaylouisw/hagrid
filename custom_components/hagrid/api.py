@@ -3925,6 +3925,7 @@ class TranspowerClient:
         This provides the most recent available data from EMI public datasets.
         """
         # Check cache
+        # Ignore legacy naive cache timestamps to avoid aware/naive subtraction errors after upgrade.
         cache_time = self._cache_time if self._cache_time and self._cache_time.tzinfo else None
         if self._cache and cache_time and dt.now() - cache_time < self._cache_ttl:
             return self._cache.get("power_data")
