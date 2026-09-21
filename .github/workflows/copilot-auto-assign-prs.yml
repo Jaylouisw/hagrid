@@ -61,14 +61,24 @@ jobs:
               return;
             }
 
-            await github.graphql(
-              `mutation EnableAutoMerge($pullRequestId: ID!) {
-                enablePullRequestAutoMerge(input: { pullRequestId: $pullRequestId, mergeMethod: SQUASH }) {
-                  pullRequest {
-                    number
+            try {
+              await github.graphql(
+                `mutation EnableAutoMerge($pullRequestId: ID!) {
+                  enablePullRequestAutoMerge(input: { pullRequestId: $pullRequestId, mergeMethod: SQUASH }) {
+                    pullRequest {
+                      number
+                    }
                   }
-                }
-              }`,
-              { pullRequestId: pr.data.node_id },
-            );
-            core.info('Enabled auto-merge with squash.');
+                }`,
+                { pullRequestId: pr.data.node_id },
+              );
+              core.info('Enabled auto-merge with squash.');
+            } catch (error) {
+              // A PR whose checks are still running comes back as
+              // "Pull request is in unstable status" (UNPROCESSABLE), and a PR with a
+              // pending required review comes back as "Pull request is in blocked status".
+              // Both mean "ask again after the next push", not "this workflow is broken" —
+              // failing the job here puts a red X on every PR in the repo and, worse,
+              // blocks any merge loop that gates on a green check run.
+              core.warning(`Auto-merge not armed for PR #${pull_number}: ${error.message}`);
+            }
