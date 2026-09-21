@@ -3870,55 +3870,56 @@ class TranspowerClient:
             async with self._session.get(url) as resp:
                 if resp.status != 200:
                     return None
-
                 content = await resp.text()
-                lines = content.strip().split("\n")
-                if len(lines) < 2:
-                    return None
-
-                # Parse header
-                headers = lines[0].split(",")
-
-                # Get the last few rows (most recent data)
-                generation_by_fuel = {}
-                total_gen = 0
-                renewable_gen = 0
-
-                # Process last row
-                last_row = lines[-1].split(",")
-
-                # Try to find fuel type and generation columns
-                fuel_idx = None
-                for i, h in enumerate(headers):
-                    h_lower = h.lower().strip('"')
-                    if "fuel" in h_lower or "type" in h_lower:
-                        fuel_idx = i
-
-                # If we can't find the structure, aggregate by fuel type
-                if fuel_idx is None:
-                    # Alternative: scan the file structure for fuel-specific columns
-                    for i, h in enumerate(headers):
-                        h_lower = h.lower().strip('"')
-                        if h_lower in ["hydro", "wind", "solar", "geothermal", "gas", "coal", "diesel", "battery"]:
-                            try:
-                                val = float(last_row[i].strip('"'))
-                                generation_by_fuel[h_lower] = val
-                                total_gen += val
-                                if h_lower in ["hydro", "wind", "solar", "geothermal"]:
-                                    renewable_gen += val
-                            except (ValueError, IndexError):
-                                pass
-
-                return {
-                    "generation_by_fuel": generation_by_fuel,
-                    "total_generation_mw": total_gen,
-                    "renewable_generation_mw": renewable_gen,
-                    "renewable_percentage": (renewable_gen / total_gen * 100) if total_gen > 0 else None,
-                }
-        # Unicode decoding happens while reading response text, before the CSV parsing below.
+        # Unicode decoding happens while reading response text.
         except (aiohttp.ClientError, TimeoutError, UnicodeDecodeError) as e:
             _LOGGER.error("Error fetching NZ generation CSV: %s", e)
             return None
+
+        try:
+            lines = content.strip().split("\n")
+            if len(lines) < 2:
+                return None
+
+            # Parse header
+            headers = lines[0].split(",")
+
+            # Get the last few rows (most recent data)
+            generation_by_fuel = {}
+            total_gen = 0
+            renewable_gen = 0
+
+            # Process last row
+            last_row = lines[-1].split(",")
+
+            # Try to find fuel type and generation columns
+            fuel_idx = None
+            for i, h in enumerate(headers):
+                h_lower = h.lower().strip('"')
+                if "fuel" in h_lower or "type" in h_lower:
+                    fuel_idx = i
+
+            # If we can't find the structure, aggregate by fuel type
+            if fuel_idx is None:
+                # Alternative: scan the file structure for fuel-specific columns
+                for i, h in enumerate(headers):
+                    h_lower = h.lower().strip('"')
+                    if h_lower in ["hydro", "wind", "solar", "geothermal", "gas", "coal", "diesel", "battery"]:
+                        try:
+                            val = float(last_row[i].strip('"'))
+                            generation_by_fuel[h_lower] = val
+                            total_gen += val
+                            if h_lower in ["hydro", "wind", "solar", "geothermal"]:
+                                renewable_gen += val
+                        except (ValueError, IndexError):
+                            pass
+
+            return {
+                "generation_by_fuel": generation_by_fuel,
+                "total_generation_mw": total_gen,
+                "renewable_generation_mw": renewable_gen,
+                "renewable_percentage": (renewable_gen / total_gen * 100) if total_gen > 0 else None,
+            }
         except (csv.Error, KeyError, IndexError, TypeError, ValueError) as e:
             _LOGGER.error("Error parsing NZ generation CSV: %s", e)
             return None
