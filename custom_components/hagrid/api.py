@@ -3925,7 +3925,8 @@ class TranspowerClient:
         This provides the most recent available data from EMI public datasets.
         """
         # Check cache
-        if self._cache and self._cache_time and dt.now() - self._cache_time < self._cache_ttl:
+        cache_time = self._cache_time if self._cache_time and self._cache_time.tzinfo else None
+        if self._cache and cache_time and dt.now() - cache_time < self._cache_ttl:
             return self._cache.get("power_data")
 
         gen_url = await self._get_latest_generation_file()
