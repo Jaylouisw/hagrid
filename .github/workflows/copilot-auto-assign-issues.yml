@@ -15,4 +15,21 @@ jobs:
       - name: Assign the issue to Copilot
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh issue edit "${{ github.event.issue.number }}" --repo "${{ github.repository }}" --add-assignee Copilot
+        run: |
+          gh api \
+            --method POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "/repos/${{ github.repository }}/issues/${{ github.event.issue.number }}/assignees" \
+            --input - <<'JSON'
+          {
+            "assignees": ["copilot-swe-agent[bot]"],
+            "agent_assignment": {
+              "target_repo": "${{ github.repository }}",
+              "base_branch": "${{ github.event.repository.default_branch }}",
+              "custom_instructions": "",
+              "custom_agent": "",
+              "model": ""
+            }
+          }
+          JSON
