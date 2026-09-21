@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import pathlib
 import sys
 from typing import Any
@@ -53,7 +54,8 @@ def test_carbon_intensity_request_handles_transport_failures() -> None:
 
 
 def test_carbon_intensity_request_handles_json_decode_failures() -> None:
-    assert _request(_FakeSession(response=_FakeResponse(error=ValueError("invalid json")))) is None
+    decode_error = json.JSONDecodeError("invalid json", "{}", 0)
+    assert _request(_FakeSession(response=_FakeResponse(error=decode_error))) is None
 
 
 def test_carbon_intensity_request_does_not_hide_unexpected_errors() -> None:
