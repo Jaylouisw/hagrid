@@ -75,11 +75,11 @@ def test_config_flow_handler_registers_in_home_assistant() -> None:
 
 def test_circuit_flow_constructs_the_way_call_sites_do() -> None:
     """The dataclass behind the import-failure bug, built with the keyword arguments used in api.py."""
-    from datetime import datetime
+    from homeassistant.util import dt
 
     from custom_components.hagrid.api import CircuitFlow
 
-    now = datetime.now()
+    now = dt.now()
     flow = CircuitFlow(
         circuit_id="gen_wind",
         circuit_type="generation",

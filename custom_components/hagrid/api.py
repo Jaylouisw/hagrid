@@ -12,6 +12,7 @@ from typing import Any, ClassVar
 from xml.etree import ElementTree as ET
 
 import aiohttp
+from homeassistant.util import dt
 
 from .const import (
     AUSTRALIA_REGIONS,
@@ -556,8 +557,8 @@ class CarbonIntensityClient(GridAPIClient):
                     forecast=intensity_data.get("forecast", 0),
                     actual=intensity_data.get("actual"),
                     index=intensity_data.get("index", "moderate"),
-                    from_time=datetime.fromisoformat(from_time.replace("Z", "+00:00")) if from_time else datetime.now(),
-                    to_time=datetime.fromisoformat(to_time.replace("Z", "+00:00")) if to_time else datetime.now(),
+                    from_time=datetime.fromisoformat(from_time.replace("Z", "+00:00")) if from_time else dt.now(),
+                    to_time=datetime.fromisoformat(to_time.replace("Z", "+00:00")) if to_time else dt.now(),
                 ),
                 generation_mix=generation_mix,
             )
@@ -1604,7 +1605,7 @@ class ElexonBMRSClient:
                     fuel_type=item.get("fuelType", "UNKNOWN"),
                     output_mw=float(item.get("quantity", 0)),
                     timestamp=datetime.fromisoformat(
-                        item.get("settlementDate", datetime.now().isoformat())
+                        item.get("settlementDate", dt.now().isoformat())
                     ),
                     settlement_period=item.get("settlementPeriod", 0),
                     name=item.get("registeredResourceName"),
@@ -1624,7 +1625,7 @@ class ElexonBMRSClient:
             return []
 
         generation = []
-        now = datetime.now()
+        now = dt.now()
 
         # Handle the response structure
         gen_data = data if isinstance(data, list) else data.get("data", [])
@@ -1657,7 +1658,7 @@ class ElexonBMRSClient:
             return []
 
         flows = []
-        now = datetime.now()
+        now = dt.now()
 
         for item in data.get("data", []):
             try:
@@ -1696,7 +1697,7 @@ class ElexonBMRSClient:
             return SystemFrequency(
                 frequency_hz=float(latest.get("frequency", 50.0)),
                 timestamp=datetime.fromisoformat(
-                    latest.get("measurementTime", datetime.now().isoformat())
+                    latest.get("measurementTime", dt.now().isoformat())
                 ),
             )
         except (ValueError, TypeError):
@@ -1717,7 +1718,7 @@ class ElexonBMRSClient:
             return DemandData(
                 demand_mw=float(latest.get("initialDemandOutturn", 0)),
                 timestamp=datetime.fromisoformat(
-                    latest.get("startTime", datetime.now().isoformat())
+                    latest.get("startTime", dt.now().isoformat())
                 ),
                 demand_type="national",
                 settlement_period=latest.get("settlementPeriod"),
@@ -1774,7 +1775,7 @@ class ElexonBMRSClient:
         )
 
         flows = []
-        now = datetime.now()
+        now = dt.now()
 
         # Add generation by fuel type
         if isinstance(results[0], list):
@@ -1839,7 +1840,7 @@ class ElexonBMRSClient:
         )
 
         summary = {
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": dt.now().isoformat(),
             "generation": {},
             "interconnectors": {},
             "demand_mw": None,
@@ -2169,7 +2170,7 @@ class EIAClient:
                 power_import_mw=None,
                 power_export_mw=None,
                 generation_by_source=generation_by_source,
-                timestamp=datetime.fromisoformat(latest_period) if latest_period else datetime.now(),
+                timestamp=datetime.fromisoformat(latest_period) if latest_period else dt.now(),
                 data_source="EIA",
             )
         except Exception as e:
@@ -2292,7 +2293,7 @@ class ENTSOEClient:
         Returns:
             ZonePowerBreakdown with generation by source
         """
-        now = datetime.utcnow()
+        now = dt.utcnow()
         start = (now - timedelta(hours=hours_back)).strftime("%Y%m%d%H00")
         end = now.strftime("%Y%m%d%H00")
 
@@ -2343,7 +2344,7 @@ class ENTSOEClient:
                 power_import_mw=None,
                 power_export_mw=None,
                 generation_by_source=generation_by_source,
-                timestamp=datetime.utcnow(),
+                timestamp=dt.utcnow(),
                 data_source="ENTSO-E",
             )
         except Exception as e:
@@ -2364,7 +2365,7 @@ class ENTSOEClient:
         Returns:
             Total load in MW
         """
-        now = datetime.utcnow()
+        now = dt.utcnow()
         start = (now - timedelta(hours=hours_back)).strftime("%Y%m%d%H00")
         end = now.strftime("%Y%m%d%H00")
 
@@ -2466,7 +2467,7 @@ class OpenElectricityClient:
                 generation_by_source=generation_by_source,
                 timestamp=datetime.fromisoformat(
                     data.get("data_updated", "").replace("Z", "+00:00")
-                ) if data.get("data_updated") else datetime.now(),
+                ) if data.get("data_updated") else dt.now(),
                 data_source="OpenElectricity",
             )
         except Exception as e:
@@ -2499,7 +2500,7 @@ class OpenElectricityClient:
                 renewable_percentage=data.get("renewables_proportion", 0) * 100,
                 timestamp=datetime.fromisoformat(
                     data.get("data_updated", "").replace("Z", "+00:00")
-                ) if data.get("data_updated") else datetime.now(),
+                ) if data.get("data_updated") else dt.now(),
                 data_source="OpenElectricity",
             )
         except Exception as e:
@@ -2573,7 +2574,7 @@ class REEEsiosClient:
                 generation_by_source={},  # Need to query indicator 10195
                 timestamp=datetime.fromisoformat(
                     latest.get("datetime", "").replace("Z", "+00:00")
-                ) if latest.get("datetime") else datetime.now(),
+                ) if latest.get("datetime") else dt.now(),
                 data_source="REE Esios",
             )
         except Exception as e:
@@ -2631,7 +2632,7 @@ class RTEClient:
 
     async def _get_token(self) -> str | None:
         """Get or refresh OAuth2 access token."""
-        if self._access_token and self._token_expires and datetime.now() < self._token_expires:
+        if self._access_token and self._token_expires and dt.now() < self._token_expires:
             return self._access_token
 
         auth_url = f"{self.base_url}/token/oauth/"
@@ -2650,7 +2651,7 @@ class RTEClient:
                     data = await response.json()
                     self._access_token = data.get("access_token")
                     expires_in = data.get("expires_in", 3600)
-                    self._token_expires = datetime.now() + timedelta(seconds=expires_in - 60)
+                    self._token_expires = dt.now() + timedelta(seconds=expires_in - 60)
                     return self._access_token
                 else:
                     _LOGGER.error("RTE OAuth error: %s", response.status)
@@ -2716,7 +2717,7 @@ class RTEClient:
                 power_import_mw=None,
                 power_export_mw=None,
                 generation_by_source=generation_by_source,
-                timestamp=datetime.now(),
+                timestamp=dt.now(),
                 data_source="RTE",
             )
         except Exception as e:
@@ -3843,7 +3844,7 @@ class TranspowerClient:
     async def _get_latest_generation_file(self) -> str | None:
         """Get URL of the latest generation file."""
         # EMI publishes monthly generation files
-        today = datetime.now()
+        today = dt.now()
         year = today.year
         month = today.month
 
@@ -3924,7 +3925,7 @@ class TranspowerClient:
         This provides the most recent available data from EMI public datasets.
         """
         # Check cache
-        if self._cache and self._cache_time and datetime.now() - self._cache_time < self._cache_ttl:
+        if self._cache and self._cache_time and dt.now() - self._cache_time < self._cache_ttl:
             return self._cache.get("power_data")
 
         gen_url = await self._get_latest_generation_file()
@@ -3951,7 +3952,7 @@ class TranspowerClient:
 
         # Cache result
         self._cache["power_data"] = result
-        self._cache_time = datetime.now()
+        self._cache_time = dt.now()
 
         return result
 
