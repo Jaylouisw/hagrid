@@ -1,0 +1,74 @@
+name: Copilot pull request automation
+
+on:
+  pull_request_target:
+    types: [opened, reopened, ready_for_review, synchronize]
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  automate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Assign, review, and auto-merge with Copilot
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const pull_number = context.payload.pull_request.number;
+            const currentAssignees = (context.payload.pull_request.assignees || []).map(({ login }) => login.toLowerCase());
+
+            if (!currentAssignees.includes('copilot')) {
+              await github.rest.issues.addAssignees({
+                owner,
+                repo,
+                issue_number: pull_number,
+                assignees: ['Copilot'],
+              });
+              core.info('Assigned Copilot to the pull request.');
+            } else {
+              core.info('Copilot is already assigned to the pull request.');
+            }
+
+            try {
+              await github.rest.pulls.requestReviewers({
+                owner,
+                repo,
+                pull_number,
+                reviewers: ['Copilot'],
+              });
+              core.info('Requested a Copilot review.');
+            } catch (error) {
+              if (error.status === 422) {
+                core.info(`Review request skipped: ${error.message}`);
+              } else {
+                throw error;
+              }
+            }
+
+            if (context.payload.pull_request.draft) {
+              core.info('Draft pull request: skipping auto-merge until it is ready for review.');
+              return;
+            }
+
+            const pr = await github.rest.pulls.get({ owner, repo, pull_number });
+            if (pr.data.auto_merge) {
+              core.info('Auto-merge is already enabled.');
+              return;
+            }
+
+            await github.graphql(
+              `mutation EnableAutoMerge($pullRequestId: ID!) {
+                enablePullRequestAutoMerge(input: { pullRequestId: $pullRequestId, mergeMethod: SQUASH }) {
+                  pullRequest {
+                    number
+                  }
+                }
+              }`,
+              { pullRequestId: pr.data.node_id },
+            );
+            core.info('Enabled auto-merge with squash.');
