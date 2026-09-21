@@ -13,7 +13,7 @@
             },
             "confirm": {
                 "title": "API Keys (Optional)",
-                "description": "Configure your API keys for additional data sources. All keys are stored securely in Home Assistant's encrypted storage.\n\n**Region:** {region}\n**DNO:** {dno}",
+                "description": "Configure your API keys for additional data sources. Keys are stored in the Home Assistant configuration entry (`config/.storage/core.config_entries`) as plain text on disk, protected only by the file permissions on that directory.\n\n**Region:** {region}\n**DNO:** {dno}",
                 "data": {
                     "national_grid_api_key": "National Grid API Key",
                     "ssen_nerda_api_key": "SSEN NERDA API Key",

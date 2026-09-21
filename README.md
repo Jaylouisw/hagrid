@@ -79,6 +79,14 @@ same list is what you get when the lookup service cannot be reached.
 | Show live faults | ✓ | Display active power cuts |
 | Include forecast | ✓ | Fetch 48-hour carbon forecast |
 
+### API key storage
+
+Any API keys you enter are stored in the Home Assistant configuration entry at
+`config/.storage/core.config_entries` as plain text on disk. They are **not** encrypted.
+Access is protected only by the file permissions on the `.storage` directory. Keep that
+directory readable only by the Home Assistant process and treat the keys like any other
+credential stored on the same host.
+
 ## ✨ Features
 
 - **Carbon intelligence** — real-time intensity (gCO2/kWh), carbon index, 48-hour forecast, and
