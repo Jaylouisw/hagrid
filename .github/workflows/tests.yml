@@ -18,6 +18,9 @@ on:
     - cron: "23 6 * * 1"
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   shape:
     name: Tests (${{ matrix.label }})
@@ -36,9 +39,13 @@ jobs:
             python: "3.12"
             homeassistant: "homeassistant==2024.1.0"
     steps:
-      - uses: actions/checkout@v7
+      - name: Checkout
+        # v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
 
-      - uses: actions/setup-python@v7
+      - name: Set up Python
+        # v7
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
         with:
           python-version: ${{ matrix.python }}
 
