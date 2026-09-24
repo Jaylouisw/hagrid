@@ -195,7 +195,8 @@ class HAGridConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     ) -> FlowResult:
         """Handle confirmation step with API keys."""
         if user_input is not None:
-            # Create the entry with API keys stored securely in data
+            # The keys go into the entry's data, which Home Assistant writes as plain text to
+            # config/.storage/core.config_entries — see the README's "API key storage" section.
             title = self._region_info.get("region_name", "HAGrid")
             if self._postcode:
                 title = f"HAGrid - {self._postcode}"
