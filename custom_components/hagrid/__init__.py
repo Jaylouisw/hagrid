@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
 from pathlib import Path
 
 from homeassistant.components.frontend import add_extra_js_url
@@ -21,27 +20,32 @@ _MAP_CARD_PATH = Path(__file__).parent / "www" / "hagrid-map.js"
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 
-@dataclass(slots=True)
-class _StaticPathConfigCompat:
-    """Runtime shape accepted by newer Home Assistant static-path registration."""
-
-    url_path: str
-    path: str
-    cache_headers: bool = True
-
-
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
-    """Register the map-card JavaScript so HACS installs work without manual steps."""
+    """Serve the map-card JavaScript from the integration.
+
+    HACS delivers only ``custom_components/hagrid/``, so the card cannot live in ``www/``: that
+    folder is never installed, and the old instructions told every user to copy the file by hand
+    and add a Lovelace resource. Registering the file here means an install that HACS performs is
+    a working card, with no manual step.
+    """
     if not _MAP_CARD_PATH.is_file():
-        _LOGGER.warning("Map card JS not found at %s", _MAP_CARD_PATH)
+        _LOGGER.warning(
+            "HAGrid map card JS is missing at %s — sensors will work, the card will not",
+            _MAP_CARD_PATH,
+        )
         return True
 
     if register_static_paths := getattr(hass.http, "async_register_static_paths", None):
+        # Home Assistant 2024.7+ replaced register_static_path with this call and its
+        # StaticPathConfig. The import is deliberately lazy: on the declared floor (2024.1) that
+        # class does not exist, and a top-level import would break the whole integration there.
+        from homeassistant.components.http import StaticPathConfig
+
         await register_static_paths(
-            [_StaticPathConfigCompat(_MAP_CARD_URL, str(_MAP_CARD_PATH), cache_headers=False)]
+            [StaticPathConfig(_MAP_CARD_URL, str(_MAP_CARD_PATH), cache_headers=False)]
         )
     else:
-        hass.http.register_static_path(_MAP_CARD_URL, str(_MAP_CARD_PATH), False)
+        hass.http.register_static_path(_MAP_CARD_URL, str(_MAP_CARD_PATH), cache_headers=False)
 
     add_extra_js_url(hass, _MAP_CARD_URL)
     return True
