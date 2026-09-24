@@ -3,7 +3,7 @@
   "name": "HAGrid - Electrical Grid Map",
   "codeowners": ["@jaylouisw"],
   "config_flow": true,
-  "dependencies": ["frontend"],
+  "dependencies": ["http", "frontend"],
   "documentation": "https://github.com/jaylouisw/hagrid",
   "integration_type": "hub",
   "iot_class": "cloud_polling",
