@@ -79,6 +79,18 @@ same list is what you get when the lookup service cannot be reached.
 | Show live faults | ✓ | Display active power cuts |
 | Include forecast | ✓ | Fetch 48-hour carbon forecast |
 
+### API key storage
+
+Most of HAGrid's data comes from keyless APIs — carbon intensity, the generation mix, UKPN and NGED
+live faults all work with nothing entered. A key is only needed for sources that demand one.
+
+If you enter a key, it is kept in the integration's Home Assistant configuration entry, which is
+written to `config/.storage/core.config_entries` as plain text on disk. **Home Assistant does not
+encrypt that file.** The only thing protecting the key is the file permissions on the `.storage`
+directory, so treat it like any other credential stored on the same host: anything that can read
+that directory can read your keys. If you would rather not store a key at all, leave the field
+empty — the sources that need it stay unavailable and nothing else changes.
+
 ## ✨ Features
 
 - **Carbon intelligence** — real-time intensity (gCO2/kWh), carbon index, 48-hour forecast, and

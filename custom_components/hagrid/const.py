@@ -17,7 +17,8 @@ CONF_SHOW_LIVE_FAULTS = "show_live_faults"
 CONF_INCLUDE_OSM_DATA = "include_osm_data"
 CONF_OSM_RADIUS_KM = "osm_radius_km"
 
-# Config - API Keys (stored securely in config entry)
+# Config - API keys. Kept in the config entry: plain text in config/.storage/core.config_entries,
+# protected only by file permissions, which is what the README's "API key storage" section says.
 CONF_NATIONAL_GRID_API_KEY = "national_grid_api_key"
 CONF_SSEN_NERDA_API_KEY = "ssen_nerda_api_key"
 CONF_ENERGY_DASHBOARD_API_KEY = "energy_dashboard_api_key"
@@ -820,3 +821,5 @@ INFRASTRUCTURE_TYPES = {
     "generation": {"icon": "mdi:wind-turbine", "color": "#27AE60"},
     "storage": {"icon": "mdi:battery-charging", "color": "#8E44AD"},
 }
+# Config - API keys. Kept in the config entry: plain text in config/.storage/core.config_entries,
+# protected only by file permissions, which is what the README's "API key storage" section says.

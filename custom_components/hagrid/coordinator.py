@@ -131,7 +131,7 @@ class HAGridCoordinator(DataUpdateCoordinator):
             CONF_OSM_RADIUS_KM, DEFAULT_OSM_RADIUS_KM
         )
 
-        # API keys from entry.data (stored securely)
+        # API keys from entry.data: plain text in config/.storage/core.config_entries, not encrypted.
         self._national_grid_api_key: str = entry.data.get(CONF_NATIONAL_GRID_API_KEY, "")
         self._ssen_nerda_api_key: str = entry.data.get(CONF_SSEN_NERDA_API_KEY, "")
         self._energy_dashboard_api_key: str = entry.data.get(CONF_ENERGY_DASHBOARD_API_KEY, "")

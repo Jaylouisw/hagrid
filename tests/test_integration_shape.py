@@ -226,3 +226,57 @@ def test_the_shipped_card_defines_the_element_the_readme_tells_users_to_use() ->
 
     assert "type: custom:hagrid-map-card" in readme
     assert 'customElements.define("hagrid-map-card"' in js
+# Home Assistant does not encrypt config entry data. `config/.storage/core.config_entries` is plain
+# JSON — `homeassistant/helpers/storage.py` writes it with `json_util` and no cipher — and the setup
+# screen used to tell users the opposite, that their keys were protected by encryption. A security
+# claim someone could act on is a bug, so the correction is gated here: the claim is forbidden
+# anywhere in the repository, and the truth (where the key is, what protects it) is required.
+#
+# FALSE_STORAGE_CLAIMS is assembled from fragments on purpose: written out in full, the literals would
+# be found in this file by its own scan, which is exactly what happened the first time it was run.
+# ---------------------------------------------------------------------------------------------------
+
+# Split so the guard does not match its own source.
+FALSE_STORAGE_CLAIMS = ("encrypted " + "storage", "stored " + "securely")
+TEXT_SUFFIXES = {".py", ".json", ".md", ".js", ".txt", ".yaml", ".yml"}
+SKIPPED_DIRS = {".git", ".venv-ha", ".ruff_cache", ".pytest_cache", "__pycache__", "node_modules"}
+
+
+def _repository_text_files() -> list[pathlib.Path]:
+    return [
+        path
+        for path in sorted(REPO.rglob("*"))
+        if path.is_file()
+        and path.suffix in TEXT_SUFFIXES
+        and not SKIPPED_DIRS & set(path.relative_to(REPO).parts)
+    ]
+
+
+def test_no_file_claims_api_keys_are_stored_encrypted() -> None:
+    """Nothing in the repository may describe config entry storage as encrypted."""
+    offenders = [
+        f"{path.relative_to(REPO)} ({claim})"
+        for path in _repository_text_files()
+        for claim in FALSE_STORAGE_CLAIMS
+        if claim in path.read_text(encoding="utf-8", errors="replace").lower()
+    ]
+    assert offenders == [], (
+        "Home Assistant writes config entry data as plain text to config/.storage/core.config_entries "
+        "and never encrypts it, so these claims are false — the key is protected by nothing but the "
+        "file permissions on .storage: " + "; ".join(offenders)
+    )
+
+
+def test_the_install_screen_says_where_a_key_is_kept() -> None:
+    """Correcting the claim must not leave the screen vague: it has to name the real location."""
+    for name in ("strings.json", "translations/en.json"):
+        text = (INTEGRATION / name).read_text(encoding="utf-8")
+        assert ".storage/core.config_entries" in text, f"{name} does not say where a key is kept"
+        assert "plain text" in text, f"{name} does not say the key is stored as plain text"
+
+
+def test_readme_says_where_a_key_is_kept_and_what_protects_it() -> None:
+    flat = " ".join((REPO / "README.md").read_text(encoding="utf-8").split())
+    assert ".storage/core.config_entries" in flat, "the README must name the file the key lands in"
+    assert "does not encrypt that file" in flat, "the README must say the file is not encrypted"
+    assert "file permissions" in flat, "the README must say what actually protects the key"
